@@ -108,6 +108,41 @@
         .logout-btn:hover {
             background-color: #c0392b;
         }
+
+        .qr-section {
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        #qrCode {
+            margin: 15px auto;
+            max-width: 200px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+
+        .zalo-btn {
+            background-color: #0068ff;
+        }
+
+        .zalo-btn:hover {
+            background-color: #0051cc;
+        }
+
+        .qr-btn {
+            background-color: #27ae60;
+        }
+
+        .qr-btn:hover {
+            background-color: #219653;
+        }
+        
         /* Responsive cho màn hình nhỏ (mobile) */
         @media (max-width: 768px) {
             header {
@@ -115,31 +150,36 @@
                 align-items: flex-start;
                 gap: 10px;
             }
-        
+
             .form-row {
                 flex-direction: column;
                 gap: 10px;
             }
-        
+
             .btn {
                 width: 100%;
                 text-align: center;
                 margin-top: 10px;
             }
-        
+
             .container {
                 padding: 10px;
             }
-        
+
             h2 {
                 font-size: 1.2rem;
                 text-align: center;
+            }
+
+            .action-buttons {
+                flex-direction: column;
             }
         }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
 </head>
 <body>
     <header>
@@ -218,6 +258,17 @@
                     <p>Tiền nước: <span id="waterCost">0</span> VNĐ</p>
                     <p>Tiền phòng: <span id="roomCost">0</span> VNĐ</p>
                     <p><strong>Tổng cộng: <span id="totalCost">0</span> VNĐ</strong></p>
+                    
+                    <div class="action-buttons">
+                        <button id="generateQRBtn" class="btn qr-btn">Tạo mã QR thanh toán</button>
+                        <button id="shareZaloBtn" class="btn zalo-btn">Gửi qua Zalo</button>
+                    </div>
+                    
+                    <div class="qr-section" id="qrSection">
+                        <h4>Mã QR thanh toán</h4>
+                        <div id="qrCode"></div>
+                        <p>Quét mã QR để thanh toán</p>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -248,6 +299,7 @@
         const database = firebase.database();
         
         let currentBooking = null;
+        let currentTotalCost = 0;
         
         // Kiểm tra trạng thái đăng nhập
         auth.onAuthStateChanged((user) => {
@@ -332,12 +384,12 @@
             const electricityCost = electricityUsed * electricityPrice;
             const waterCost = waterUsed * waterPrice;
             const roomCost = currentBooking.roomPrice;
-            const totalCost = electricityCost + waterCost + roomCost;
+            currentTotalCost = electricityCost + waterCost + roomCost;
             
             document.getElementById('electricityCost').textContent = electricityCost.toLocaleString('vi-VN');
             document.getElementById('waterCost').textContent = waterCost.toLocaleString('vi-VN');
             document.getElementById('roomCost').textContent = roomCost.toLocaleString('vi-VN');
-            document.getElementById('totalCost').textContent = totalCost.toLocaleString('vi-VN');
+            document.getElementById('totalCost').textContent = currentTotalCost.toLocaleString('vi-VN');
         }
         
         // Gắn sự kiện tính toán khi thay đổi giá trị
@@ -345,6 +397,74 @@
         document.getElementById('finalWater').addEventListener('input', calculateCost);
         document.getElementById('electricityPrice').addEventListener('input', calculateCost);
         document.getElementById('waterPrice').addEventListener('input', calculateCost);
+        
+        // Tạo mã QR
+        document.getElementById('generateQRBtn').addEventListener('click', function() {
+            if (currentTotalCost <= 0) {
+                alert('Vui lòng nhập đầy đủ thông tin để tính toán chi phí trước khi tạo mã QR');
+                return;
+            }
+            
+            const qrSection = document.getElementById('qrSection');
+            const qrCodeDiv = document.getElementById('qrCode');
+            
+            // Xóa mã QR cũ nếu có
+            qrCodeDiv.innerHTML = '';
+            
+            // Tạo nội dung cho mã QR
+            const qrContent = `Thanh toán tiền phòng - Tổng cộng: ${currentTotalCost.toLocaleString('vi-VN')} VNĐ`;
+            
+            // Tạo mã QR
+            QRCode.toCanvas(qrContent, { 
+                width: 200,
+                margin: 1,
+                color: {
+                    dark: '#000000',
+                    light: '#FFFFFF'
+                }
+            }, function(err, canvas) {
+                if (err) {
+                    console.error('Lỗi khi tạo mã QR:', err);
+                    alert('Có lỗi xảy ra khi tạo mã QR');
+                    return;
+                }
+                
+                qrCodeDiv.appendChild(canvas);
+                qrSection.style.display = 'block';
+            });
+        });
+        
+        // Chia sẻ qua Zalo
+        document.getElementById('shareZaloBtn').addEventListener('click', function() {
+            if (currentTotalCost <= 0) {
+                alert('Vui lòng nhập đầy đủ thông tin để tính toán chi phí trước khi chia sẻ');
+                return;
+            }
+            
+            const customerName = document.getElementById('customerName').value;
+            const electricityCost = document.getElementById('electricityCost').textContent;
+            const waterCost = document.getElementById('waterCost').textContent;
+            const roomCost = document.getElementById('roomCost').textContent;
+            const totalCost = document.getElementById('totalCost').textContent;
+            
+            // Tạo nội dung chia sẻ
+            const shareMessage = `THANH TOÁN TIỀN PHÒNG\n\n` +
+                                `Khách hàng: ${customerName}\n` +
+                                `Tiền điện: ${electricityCost} VNĐ\n` +
+                                `Tiền nước: ${waterCost} VNĐ\n` +
+                                `Tiền phòng: ${roomCost} VNĐ\n` +
+                                `TỔNG CỘNG: ${totalCost} VNĐ\n\n` +
+                                `Vui lòng thanh toán số tiền trên. Cảm ơn!`;
+            
+            // Mã hóa nội dung cho URL
+            const encodedMessage = encodeURIComponent(shareMessage);
+            
+            // Tạo URL chia sẻ Zalo
+            const zaloURL = `https://zalo.me/?msg=${encodedMessage}`;
+            
+            // Mở cửa sổ chia sẻ Zalo
+            window.open(zaloURL, '_blank');
+        });
         
         // Xử lý trả phòng
         document.getElementById('checkoutBtn').addEventListener('click', () => {
