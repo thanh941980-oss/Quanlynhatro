@@ -182,6 +182,19 @@
             transform: translateX(0);
         }
         
+        .notification.error {
+            background: #e74c3c;
+        }
+        
+        .zalo-guide {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #0068ff;
+            font-size: 0.9rem;
+        }
+        
         /* Responsive cho màn hình nhỏ (mobile) */
         @media (max-width: 768px) {
             header {
@@ -307,6 +320,10 @@
                             </svg>
                             Mở Zalo
                         </button>
+                    </div>
+                    
+                    <div class="zalo-guide">
+                        <p><strong>Hướng dẫn:</strong> Sao chép nội dung thanh toán, sau đó mở Zalo và dán vào tin nhắn để gửi cho khách hàng.</p>
                     </div>
                     
                     <div class="qr-section" id="qrSection">
@@ -504,32 +521,87 @@
                                 `Vui lòng thanh toán số tiền trên. Cảm ơn!`;
             
             // Sao chép vào clipboard
-            navigator.clipboard.writeText(shareMessage)
-                .then(() => {
-                    showNotification('Nội dung đã được sao chép! Dán vào Zalo để gửi.');
-                })
-                .catch(err => {
-                    console.error('Lỗi khi sao chép: ', err);
-                    alert('Không thể sao chép nội dung. Vui lòng thử lại.');
-                });
+            copyToClipboard(shareMessage);
         });
         
         // Mở Zalo
         document.getElementById('openZaloBtn').addEventListener('click', function() {
-            // Mở Zalo trên điện thoại hoặc web
-            if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-                // Mở ứng dụng Zalo trên điện thoại
+            // Kiểm tra xem có phải thiết bị di động không
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (isMobile) {
+                // Thử mở ứng dụng Zalo
                 window.location.href = 'zalo://';
+                
+                // Nếu không mở được ứng dụng, sau 1 giây sẽ mở trang web Zalo
+                setTimeout(function() {
+                    window.location.href = 'https://zalo.me';
+                }, 1000);
             } else {
                 // Mở Zalo trên máy tính
                 window.open('https://zalo.me', '_blank');
             }
         });
         
+        // Sao chép vào clipboard
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                // Sử dụng Clipboard API hiện đại
+                navigator.clipboard.writeText(text)
+                    .then(() => {
+                        showNotification('Nội dung đã được sao chép! Dán vào Zalo để gửi.');
+                    })
+                    .catch(err => {
+                        // Fallback cho trình duyệt cũ
+                        fallbackCopyToClipboard(text);
+                    });
+            } else {
+                // Fallback cho trình duyệt cũ
+                fallbackCopyToClipboard(text);
+            }
+        }
+        
+        // Phương pháp sao chép dự phòng
+        function fallbackCopyToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            
+            // Đặt phần tử ngoài màn hình
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            
+            // Chọn và sao chép
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showNotification('Nội dung đã được sao chép! Dán vào Zalo để gửi.');
+                } else {
+                    showNotification('Không thể sao chép nội dung. Vui lòng sao chép thủ công.', true);
+                }
+            } catch (err) {
+                showNotification('Không thể sao chép nội dung. Vui lòng sao chép thủ công.', true);
+            }
+            
+            // Xóa phần tử
+            document.body.removeChild(textArea);
+        }
+        
         // Hiển thị thông báo
-        function showNotification(message) {
+        function showNotification(message, isError = false) {
             const notification = document.getElementById('notification');
             notification.textContent = message;
+            
+            if (isError) {
+                notification.classList.add('error');
+            } else {
+                notification.classList.remove('error');
+            }
+            
             notification.classList.add('show');
             
             setTimeout(() => {
