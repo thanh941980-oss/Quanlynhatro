@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng nhập - Quản lý nhà trọ</title>
+    <title>Đăng nhập / Đăng ký - Quản lý nhà trọ</title>
     <style>
         * {
             margin: 0;
@@ -11,46 +11,37 @@
             box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
         body {
             background-color: #f5f5f5;
-            color: #333;
-            line-height: 1.6;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
         }
-        
         .auth-container {
             width: 100%;
             max-width: 400px;
             padding: 20px;
         }
-        
         .auth-form {
             background: white;
             padding: 2rem;
             border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
-        
         .auth-form h2 {
             text-align: center;
             margin-bottom: 1.5rem;
             color: #2c3e50;
         }
-        
         .form-group {
             margin-bottom: 1rem;
         }
-        
         .form-group label {
             display: block;
             margin-bottom: 0.5rem;
             font-weight: 500;
         }
-        
         .form-group input {
             width: 100%;
             padding: 0.75rem;
@@ -58,7 +49,6 @@
             border-radius: 4px;
             font-size: 1rem;
         }
-        
         .btn {
             display: block;
             width: 100%;
@@ -71,11 +61,16 @@
             cursor: pointer;
             transition: background-color 0.3s;
         }
-        
         .btn:hover {
             background-color: #2980b9;
         }
-        
+        .toggle-link {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            color: #3498db;
+        }
         .error {
             color: #c62828;
             font-size: 0.9rem;
@@ -87,7 +82,8 @@
 </head>
 <body>
     <div class="auth-container">
-        <div class="auth-form">
+        <!-- Form Đăng nhập -->
+        <div class="auth-form" id="loginForm">
             <h2>Đăng nhập hệ thống</h2>
             <div class="form-group">
                 <label for="loginEmail">Email</label>
@@ -99,11 +95,28 @@
             </div>
             <button id="loginBtn" class="btn">Đăng nhập</button>
             <div id="loginError" class="error"></div>
+            <div class="toggle-link" onclick="showRegister()">Chưa có tài khoản? Đăng ký</div>
+        </div>
+
+        <!-- Form Đăng ký -->
+        <div class="auth-form" id="registerForm" style="display:none;">
+            <h2>Đăng ký tài khoản</h2>
+            <div class="form-group">
+                <label for="registerEmail">Email</label>
+                <input type="email" id="registerEmail" placeholder="Nhập email">
+            </div>
+            <div class="form-group">
+                <label for="registerPassword">Mật khẩu</label>
+                <input type="password" id="registerPassword" placeholder="Nhập mật khẩu">
+            </div>
+            <button id="registerBtn" class="btn">Đăng ký</button>
+            <div id="registerError" class="error"></div>
+            <div class="toggle-link" onclick="showLogin()">Đã có tài khoản? Đăng nhập</div>
         </div>
     </div>
 
     <script>
-        // Cấu hình Firebase
+        // Firebase config
         const firebaseConfig = { 
             apiKey: "AIzaSyAz38ll5L6nZOicZyQRFtKd0TuzohrLFws",
             authDomain: "quan-ly-nha-tro-2a4bf.firebaseapp.com",
@@ -113,28 +126,57 @@
             messagingSenderId: "490747665921",
             appId: "1:490747665921:web:48b0e2bad3a0f894c22a00"
         };
-        
+
         // Khởi tạo Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
-        
-        // Xử lý đăng nhập
+
+        // Chuyển đổi form
+        function showRegister() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+        }
+        function showLogin() {
+            document.getElementById('registerForm').style.display = 'none';
+            document.getElementById('loginForm').style.display = 'block';
+        }
+
+        // Đăng nhập
         document.getElementById('loginBtn').addEventListener('click', () => {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
-            
+
             if (!email || !password) {
                 document.getElementById('loginError').textContent = 'Vui lòng nhập đầy đủ thông tin!';
                 return;
             }
-            
+
             auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    // Đăng nhập thành công, chuyển đến dashboard
+                .then(() => {
                     window.location.href = 'dashboard.html';
                 })
-                .catch((error) => {
+                .catch(() => {
                     document.getElementById('loginError').textContent = 'Email hoặc mật khẩu không đúng!';
+                });
+        });
+
+        // Đăng ký
+        document.getElementById('registerBtn').addEventListener('click', () => {
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+
+            if (!email || !password) {
+                document.getElementById('registerError').textContent = 'Vui lòng nhập đầy đủ thông tin!';
+                return;
+            }
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(() => {
+                    alert('Đăng ký thành công! Vui lòng đăng nhập.');
+                    showLogin();
+                })
+                .catch((error) => {
+                    document.getElementById('registerError').textContent = 'Lỗi: ' + error.message;
                 });
         });
     </script>
