@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -304,11 +304,39 @@
                     </div>
                 </div>
                 
+                <!-- Bổ sung các trường mới -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="wifiCost">Tiền WiFi (VNĐ)</label>
+                        <input type="number" id="wifiCost" value="0">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="garbageCost">Tiền rác (VNĐ)</label>
+                        <input type="number" id="garbageCost" value="0">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="otherCost">Tiền khác (VNĐ)</label>
+                        <input type="number" id="otherCost" value="0">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="otherDescription">Mô tả khoản khác</label>
+                        <input type="text" id="otherDescription" placeholder="Mô tả khoản phí khác">
+                    </div>
+                </div>
+                
                 <div class="calculation-result">
                     <h4>Kết quả tính toán</h4>
                     <p>Tiền điện: <span id="electricityCost">0</span> VNĐ</p>
                     <p>Tiền nước: <span id="waterCost">0</span> VNĐ</p>
                     <p>Tiền phòng: <span id="roomCost">0</span> VNĐ</p>
+                    <p>Tiền WiFi: <span id="wifiCostDisplay">0</span> VNĐ</p>
+                    <p>Tiền rác: <span id="garbageCostDisplay">0</span> VNĐ</p>
+                    <p>Tiền khác: <span id="otherCostDisplay">0</span> VNĐ</p>
                     <p><strong>Tổng cộng: <span id="totalCost">0</span> VNĐ</strong></p>
                     
                     <div class="action-buttons">
@@ -441,6 +469,9 @@
             const finalWater = parseInt(document.getElementById('finalWater').value) || 0;
             const electricityPrice = parseInt(document.getElementById('electricityPrice').value) || 0;
             const waterPrice = parseInt(document.getElementById('waterPrice').value) || 0;
+            const wifiCost = parseInt(document.getElementById('wifiCost').value) || 0;
+            const garbageCost = parseInt(document.getElementById('garbageCost').value) || 0;
+            const otherCost = parseInt(document.getElementById('otherCost').value) || 0;
             
             const electricityUsed = finalElectricity - currentBooking.initialElectricity;
             const waterUsed = finalWater - currentBooking.initialWater;
@@ -448,11 +479,14 @@
             const electricityCost = electricityUsed * electricityPrice;
             const waterCost = waterUsed * waterPrice;
             const roomCost = currentBooking.roomPrice;
-            currentTotalCost = electricityCost + waterCost + roomCost;
+            currentTotalCost = electricityCost + waterCost + roomCost + wifiCost + garbageCost + otherCost;
             
             document.getElementById('electricityCost').textContent = electricityCost.toLocaleString('vi-VN');
             document.getElementById('waterCost').textContent = waterCost.toLocaleString('vi-VN');
             document.getElementById('roomCost').textContent = roomCost.toLocaleString('vi-VN');
+            document.getElementById('wifiCostDisplay').textContent = wifiCost.toLocaleString('vi-VN');
+            document.getElementById('garbageCostDisplay').textContent = garbageCost.toLocaleString('vi-VN');
+            document.getElementById('otherCostDisplay').textContent = otherCost.toLocaleString('vi-VN');
             document.getElementById('totalCost').textContent = currentTotalCost.toLocaleString('vi-VN');
         }
         
@@ -461,6 +495,9 @@
         document.getElementById('finalWater').addEventListener('input', calculateCost);
         document.getElementById('electricityPrice').addEventListener('input', calculateCost);
         document.getElementById('waterPrice').addEventListener('input', calculateCost);
+        document.getElementById('wifiCost').addEventListener('input', calculateCost);
+        document.getElementById('garbageCost').addEventListener('input', calculateCost);
+        document.getElementById('otherCost').addEventListener('input', calculateCost);
         
         // Tạo mã QR
         document.getElementById('generateQRBtn').addEventListener('click', function() {
@@ -509,16 +546,28 @@
             const electricityCost = document.getElementById('electricityCost').textContent;
             const waterCost = document.getElementById('waterCost').textContent;
             const roomCost = document.getElementById('roomCost').textContent;
+            const wifiCost = document.getElementById('wifiCostDisplay').textContent;
+            const garbageCost = document.getElementById('garbageCostDisplay').textContent;
+            const otherCost = document.getElementById('otherCostDisplay').textContent;
             const totalCost = document.getElementById('totalCost').textContent;
+            const otherDescription = document.getElementById('otherDescription').value;
             
             // Tạo nội dung chia sẻ
-            const shareMessage = `THANH TOÁN TIỀN PHÒNG\n\n` +
+            let shareMessage = `THANH TOÁN TIỀN PHÒNG\n\n` +
                                 `Khách hàng: ${customerName}\n` +
                                 `Tiền điện: ${electricityCost} VNĐ\n` +
                                 `Tiền nước: ${waterCost} VNĐ\n` +
                                 `Tiền phòng: ${roomCost} VNĐ\n` +
-                                `TỔNG CỘNG: ${totalCost} VNĐ\n\n` +
-                                `Vui lòng thanh toán số tiền trên. Cảm ơn!`;
+                                `Tiền WiFi: ${wifiCost} VNĐ\n` +
+                                `Tiền rác: ${garbageCost} VNĐ\n`;
+            
+            // Thêm tiền khác nếu có
+            if (parseInt(otherCost) > 0) {
+                shareMessage += `Tiền khác (${otherDescription || 'Khác'}): ${otherCost} VNĐ\n`;
+            }
+            
+            shareMessage += `\nTỔNG CỘNG: ${totalCost} VNĐ\n\n` +
+                            `Vui lòng thanh toán số tiền trên. Cảm ơn!`;
             
             // Sao chép vào clipboard
             copyToClipboard(shareMessage);
@@ -617,6 +666,10 @@
             const finalWater = parseInt(document.getElementById('finalWater').value) || 0;
             const electricityPrice = parseInt(document.getElementById('electricityPrice').value) || 0;
             const waterPrice = parseInt(document.getElementById('waterPrice').value) || 0;
+            const wifiCost = parseInt(document.getElementById('wifiCost').value) || 0;
+            const garbageCost = parseInt(document.getElementById('garbageCost').value) || 0;
+            const otherCost = parseInt(document.getElementById('otherCost').value) || 0;
+            const otherDescription = document.getElementById('otherDescription').value;
             const checkoutNotes = document.getElementById('checkoutNotes').value;
             
             if (finalElectricity < currentBooking.initialElectricity) {
@@ -635,7 +688,7 @@
             const electricityCost = electricityUsed * electricityPrice;
             const waterCost = waterUsed * waterPrice;
             const roomCost = currentBooking.roomPrice;
-            const totalCost = electricityCost + waterCost + roomCost;
+            const totalCost = electricityCost + waterCost + roomCost + wifiCost + garbageCost + otherCost;
             
             const checkoutData = {
                 roomId: currentBooking.roomId,
@@ -650,6 +703,10 @@
                 electricityCost: electricityCost,
                 waterCost: waterCost,
                 roomCost: roomCost,
+                wifiCost: wifiCost,
+                garbageCost: garbageCost,
+                otherCost: otherCost,
+                otherDescription: otherDescription,
                 totalCost: totalCost,
                 checkoutDate: new Date().toISOString(),
                 notes: checkoutNotes
@@ -689,4 +746,4 @@
         });
     </script>
 </body>
-</html>
+</html>          
