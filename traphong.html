@@ -162,8 +162,8 @@ document.getElementById('copyZaloBtn').addEventListener('click', function(){
   const ngay = `${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}`;
   const content = `${bankConfig.bankContent || 'Thanh toán tiền tháng'} ${ngay}`;
 
-  // Link QR
-  const qrUrl = `https://img.vietqr.io/image/${bankConfig.bankName}-${bankConfig.bankAccount}-compact2.png?amount=${currentTotalCost}&addInfo=${encodeURIComponent(content)}`;
+  // ✅ Thêm accountName để hiện tên chủ tài khoản
+  const qrUrl = `https://img.vietqr.io/image/${bankConfig.bankName}-${bankConfig.bankAccount}-compact2.png?amount=${currentTotalCost}&addInfo=${encodeURIComponent(content)}&accountName=${encodeURIComponent(bankConfig.accountName || '')}`;
 
   const msg =
 `KẾT QUẢ TÍNH TOÁN
@@ -176,7 +176,11 @@ Tiền khác: ${document.getElementById('otherCostDisplay').textContent} VNĐ
 ----------------------
 TỔNG CỘNG: ${document.getElementById('totalCost').textContent} VNĐ
 
-👉 Quét QR dưới đây hoặc bấm link để thanh toán:
+💳 Ngân hàng: ${bankConfig.bankName}
+👤 Chủ TK: ${bankConfig.accountName || '---'}
+🔢 Số TK: ${bankConfig.bankAccount}
+
+👉 Quét QR hoặc bấm link để thanh toán:
 ${qrUrl}`;
 
   navigator.clipboard.writeText(msg).then(() =>
