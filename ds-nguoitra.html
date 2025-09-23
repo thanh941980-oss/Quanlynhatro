@@ -22,7 +22,7 @@
     .delete-btn:hover { background-color: #c0392b; }
     .actions-cell { width: 100px; text-align: center; }
     
-    /* Cải thiện responsive cho điện thoại */
+    /* Cải thiện responsive cho điện thoại - Giống ds-nguoithue.html */
     @media (max-width: 768px) { 
       header { 
         flex-direction: column; 
@@ -32,28 +32,34 @@
       .container { 
         padding: 10px; 
       } 
+      .btn { 
+        width: 100%; 
+        margin-bottom: 5px; 
+      }
+      /* Thêm các quy tắc để đảm bảo nút xóa hiển thị trên điện thoại */
       .table-container {
         padding: 10px;
       }
       table {
-        min-width: 500px; /* Giảm kích thước tối thiểu để phù hợp hơn */
+        min-width: 500px;
       }
       th, td {
-        padding: 8px 5px; /* Giảm padding để tiết kiệm không gian */
+        padding: 8px 5px;
         font-size: 0.9rem;
       }
       .actions-cell {
-        width: 80px; /* Giảm chiều rộng cột thao tác */
+        width: 80px;
       }
       .delete-btn {
         padding: 0.3rem 0.5rem;
         font-size: 0.75rem;
+        width: 100%; /* Đảm bảo nút chiếm toàn bộ chiều rộng ô */
       }
     }
     
     @media (max-width: 480px) {
       table {
-        min-width: 400px; /* Tiếp tục giảm kích thước tối thiểu */
+        min-width: 400px;
       }
       th, td {
         padding: 6px 3px;
