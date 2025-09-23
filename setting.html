@@ -156,7 +156,229 @@ function loadBankConfig(){
     }
   });
 }
-
+/////////////////////////////////////////////////////////
+// Tải danh sách phòng
+        function loadRooms() {
+            database.ref('rooms').once('value')
+                .then((snapshot) => {
+                    const roomList = document.getElementById('roomList');
+                    roomList.innerHTML = '';
+                    
+                    if (snapshot.exists()) {
+                        const table = document.createElement('table');
+                        table.innerHTML = `
+                            <thead>
+                                <tr>
+                                    <th>Số phòng</th>
+                                    <th>Giá phòng</th>
+                                    <th>Diện tích</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        `;
+                        
+                        const tbody = table.querySelector('tbody');
+                        
+                        snapshot.forEach((childSnapshot) => {
+                            const room = childSnapshot.val();
+                            const row = document.createElement('tr');
+                            
+                            row.innerHTML = `
+                                <td>${room.number}</td>
+                                <td>${room.price.toLocaleString('vi-VN')} VNĐ</td>
+                                <td>${room.area} m²</td>
+                                <td>${room.status === 'available' ? 'Trống' : 'Đã thuê'}</td>
+                                <td>
+                                    <button class="btn small-btn edit-room-btn" data-id="${childSnapshot.key}">Sửa</button>
+                                    <button class="btn small-btn delete-room-btn" data-id="${childSnapshot.key}">Xóa</button>
+                                </td>
+                            `;
+                            
+                            tbody.appendChild(row);
+                        });
+                        
+                        roomList.appendChild(table);
+                        
+                        // Gắn sự kiện cho nút sửa và xóa
+                        document.querySelectorAll('.edit-room-btn').forEach(btn => {
+                            btn.addEventListener('click', (e) => {
+                                const roomId = e.target.getAttribute('data-id');
+                                editRoom(roomId);
+                            });
+                        });
+                        
+                        document.querySelectorAll('.delete-room-btn').forEach(btn => {
+                            btn.addEventListener('click', (e) => {
+                                const roomId = e.target.getAttribute('data-id');
+                                deleteRoom(roomId);
+                            });
+                        });
+                    } else {
+                        roomList.innerHTML = '<p>Chưa có phòng nào.</p>';
+                    }
+                })
+                .catch((error) => {
+                    console.error('Lỗi khi tải danh sách phòng:', error);
+                });
+        }
+        
+        // Tải cấu hình giá
+        function loadPriceConfig() {
+            database.ref('config/prices').once('value')
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const config = snapshot.val();
+                        document.getElementById('defaultElectricityPrice').value = config.electricity || 3500;
+                        document.getElementById('defaultWaterPrice').value = config.water || 20000;
+                        document.getElementById('defaultWifiPrice').value = config.wifi || 50000;
+                        document.getElementById('defaultGarbagePrice').value = config.garbage || 20000;
+                    }
+                })
+                .catch((error) => {
+                    console.error('Lỗi khi tải cấu hình giá:', error);
+                });
+        }
+        
+        // Thêm phòng mới
+        document.getElementById('addRoomBtn').addEventListener('click', () => {
+            const roomNumber = document.getElementById('roomNumber').value;
+            const roomPrice = document.getElementById('roomPrice').value;
+            const roomArea = document.getElementById('roomArea').value;
+            
+            if (!roomNumber || !roomPrice || !roomArea) {
+                alert('Vui lòng điền đầy đủ thông tin!');
+                return;
+            }
+            
+            const roomData = {
+                number: roomNumber,
+                price: parseInt(roomPrice),
+                area: parseInt(roomArea),
+                status: 'available',
+                createdAt: new Date().toISOString()
+            };
+            
+            database.ref('rooms').push(roomData)
+                .then(() => {
+                    alert('Thêm phòng thành công!');
+                    document.getElementById('roomNumber').value = '';
+                    document.getElementById('roomPrice').value = '';
+                    document.getElementById('roomArea').value = '';
+                    loadRooms();
+                })
+                .catch((error) => {
+                    console.error('Lỗi khi thêm phòng:', error);
+                    alert('Có lỗi xảy ra khi thêm phòng.');
+                });
+        });
+        
+        // Sửa thông tin phòng
+        function editRoom(roomId) {
+            database.ref('rooms/' + roomId).once('value')
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const room = snapshot.val();
+                        const newNumber = prompt('Nhập số phòng mới:', room.number);
+                        if (!newNumber) return;
+                        
+                        const newPrice = prompt('Nhập giá phòng mới:', room.price);
+                        if (!newPrice) return;
+                        
+                        const newArea = prompt('Nhập diện tích mới:', room.area);
+                        if (!newArea) return;
+                        
+                        database.ref('rooms/' + roomId).update({
+                            number: newNumber,
+                            price: parseInt(newPrice),
+                            area: parseInt(newArea)
+                        })
+                        .then(() => {
+                            alert('Cập nhật phòng thành công!');
+                            loadRooms();
+                        })
+                        .catch((error) => {
+                            console.error('Lỗi khi cập nhật phòng:', error);
+                            alert('Có lỗi xảy ra khi cập nhật phòng.');
+                        });
+                    }
+                })
+                .catch((error) => {
+                    console.error('Lỗi khi tải thông tin phòng:', error);
+                });
+        }
+        
+        // Xóa phòng
+        function deleteRoom(roomId) {
+            if (confirm('Bạn có chắc chắn muốn xóa phòng này?')) {
+                database.ref('rooms/' + roomId).remove()
+                    .then(() => {
+                        alert('Xóa phòng thành công!');
+                        loadRooms();
+                    })
+                    .catch((error) => {
+                        console.error('Lỗi khi xóa phòng:', error);
+                        alert('Có lỗi xảy ra khi xóa phòng.');
+                    });
+            }
+        }
+        
+        // Lưu cấu hình giá
+        document.getElementById('savePriceConfigBtn').addEventListener('click', () => {
+            const electricityPrice = document.getElementById('defaultElectricityPrice').value;
+            const waterPrice = document.getElementById('defaultWaterPrice').value;
+            const wifiPrice = document.getElementById('defaultWifiPrice').value;
+            const garbagePrice = document.getElementById('defaultGarbagePrice').value;
+            
+            if (!electricityPrice || !waterPrice || !wifiPrice || !garbagePrice) {
+                alert('Vui lòng điền đầy đủ thông tin!');
+                return;
+            }
+            
+            database.ref('config/prices').set({
+                electricity: parseInt(electricityPrice),
+                water: parseInt(waterPrice),
+                wifi: parseInt(wifiPrice),
+                garbage: parseInt(garbagePrice)
+            })
+            .then(() => {
+                alert('Lưu cấu hình giá thành công!');
+            })
+            .catch((error) => {
+                console.error('Lỗi khi lưu cấu hình giá:', error);
+                alert('Có lỗi xảy ra khi lưu cấu hình giá.');
+            });
+        });
+        
+        // Lưu cài đặt người dùng
+        document.getElementById('saveUserSettingsBtn').addEventListener('click', () => {
+            const password = document.getElementById('userPassword').value;
+            const confirmPassword = document.getElementById('userConfirmPassword').value;
+            
+            if (password && password !== confirmPassword) {
+                alert('Mật khẩu xác nhận không khớp!');
+                return;
+            }
+            
+            const user = auth.currentUser;
+            
+            if (password) {
+                user.updatePassword(password)
+                    .then(() => {
+                        alert('Cập nhật mật khẩu thành công!');
+                        document.getElementById('userPassword').value = '';
+                        document.getElementById('userConfirmPassword').value = '';
+                    })
+                    .catch((error) => {
+                        console.error('Lỗi khi cập nhật mật khẩu:', error);
+                        alert('Có lỗi xảy ra khi cập nhật mật khẩu.');
+                    });
+            } else {
+                alert('Không có thay đổi nào để lưu.');
+            }
+        });
+/////////////////////////////////////////////////////////
 // Logout
 document.getElementById('logoutBtn').addEventListener('click',()=>{
   auth.signOut().then(()=>{window.location.href='index.html';});
