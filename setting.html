@@ -84,6 +84,7 @@
           </select>
         </div>
         <div class="form-group"><label for="bankAccount">Số tài khoản</label><input type="text" id="bankAccount"></div>
+        <div class="form-group"><label for="accountName">Tên chủ tài khoản</label><input type="text" id="accountName"></div>
         <div class="form-group"><label for="bankContent">Nội dung mặc định</label><input type="text" id="bankContent" value="Thanh toán tiền tháng"></div>
         <button id="saveBankConfigBtn" class="btn">Lưu thông tin ngân hàng</button>
       </div>
@@ -111,7 +112,7 @@ auth.onAuthStateChanged(user=>{if(!user){window.location.href='index.html';}else
 document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab-content').forEach(tab=>tab.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById(btn.dataset.tab).classList.add('active');btn.classList.add('active');}));
 
 // Save bank config
-document.getElementById('saveBankConfigBtn').addEventListener('click',()=>{const bankName=document.getElementById('bankName').value;const bankAccount=document.getElementById('bankAccount').value;const bankContent=document.getElementById('bankContent').value;if(!bankName||!bankAccount){alert("Vui lòng nhập đầy đủ");return;}database.ref('config/bank').set({bankName,bankAccount,bankContent}).then(()=>alert("Lưu thành công"));});
+document.getElementById('saveBankConfigBtn').addEventListener('click',()=>{const bankName=document.getElementById('bankName').value;const bankAccount=document.getElementById('bankAccount').value;const bankContent=document.getElementById('bankContent').value;if(!bankName||!bankAccount){alert("Vui lòng nhập đầy đủ");return;}database.ref('config/bank').set({bankName,bankAccount,accountName,bankContent}).then(()=>alert("Lưu thành công"));});
 
 // Load bank config
 function loadBankConfig(){database.ref('config/bank').once('value').then(snap=>{if(snap.exists()){const d=snap.val();document.getElementById('bankName').value=d.bankName;document.getElementById('bankAccount').value=d.bankAccount;document.getElementById('bankContent').value=d.bankContent;}});}
