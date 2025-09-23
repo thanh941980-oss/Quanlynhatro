@@ -21,10 +21,47 @@
     .delete-btn { background-color: #e74c3c; color: white; padding: 0.3rem 0.7rem; font-size: 0.8rem; }
     .delete-btn:hover { background-color: #c0392b; }
     .actions-cell { width: 100px; text-align: center; }
+    
+    /* Cải thiện responsive cho điện thoại */
     @media (max-width: 768px) { 
-      header { flex-direction: column; align-items: flex-start; gap: 10px; } 
-      .container { padding: 10px; } 
-      .btn { width: 100%; margin-bottom: 5px; }
+      header { 
+        flex-direction: column; 
+        align-items: flex-start; 
+        gap: 10px; 
+      } 
+      .container { 
+        padding: 10px; 
+      } 
+      .table-container {
+        padding: 10px;
+      }
+      table {
+        min-width: 500px; /* Giảm kích thước tối thiểu để phù hợp hơn */
+      }
+      th, td {
+        padding: 8px 5px; /* Giảm padding để tiết kiệm không gian */
+        font-size: 0.9rem;
+      }
+      .actions-cell {
+        width: 80px; /* Giảm chiều rộng cột thao tác */
+      }
+      .delete-btn {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.75rem;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      table {
+        min-width: 400px; /* Tiếp tục giảm kích thước tối thiểu */
+      }
+      th, td {
+        padding: 6px 3px;
+        font-size: 0.85rem;
+      }
+      .actions-cell {
+        width: 70px;
+      }
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -88,6 +125,18 @@
         const tbody = document.getElementById("checkoutList");
         tbody.innerHTML = "";
         
+        // Kiểm tra nếu không có dữ liệu
+        if (!snapshot.exists()) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td colspan="5" style="text-align: center; padding: 20px;">
+              Không có dữ liệu người trả phòng
+            </td>
+          `;
+          tbody.appendChild(tr);
+          return;
+        }
+        
         snapshot.forEach(child => {
           const data = child.val();
           const checkoutId = child.key;
@@ -101,7 +150,21 @@
               <td>${roomNumber}</td>
               <td>${data.customerName}</td>
               <td>${new Date(data.checkoutDate).toLocaleString("vi-VN")}</td>
-              <td>${data.totalCost.toLocaleString("vi-VN")} VNĐ</td>
+              <td>${data.totalCost ? data.totalCost.toLocaleString("vi-VN") : 0} VNĐ</td>
+              <td class="actions-cell">
+                <button class="btn delete-btn" onclick="deleteCheckout('${checkoutId}')">Xóa</button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          }).catch(error => {
+            console.error("Lỗi khi lấy thông tin phòng:", error);
+            // Hiển thị dữ liệu ngay cả khi không lấy được thông tin phòng
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${data.roomId}</td>
+              <td>${data.customerName}</td>
+              <td>${new Date(data.checkoutDate).toLocaleString("vi-VN")}</td>
+              <td>${data.totalCost ? data.totalCost.toLocaleString("vi-VN") : 0} VNĐ</td>
               <td class="actions-cell">
                 <button class="btn delete-btn" onclick="deleteCheckout('${checkoutId}')">Xóa</button>
               </td>
