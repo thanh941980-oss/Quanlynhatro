@@ -398,9 +398,28 @@
             if (!user) {
                 window.location.href = 'index.html';
             } else {
+                loadPriceConfig(); // Tải cấu hình giá trước
                 loadOccupiedRooms();
             }
         });
+        
+         // Tải cấu hình giá từ Firebase
+        function loadPriceConfig() {
+            database.ref('config/prices').once('value')
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const config = snapshot.val();
+                        // Đặt giá trị mặc định từ cấu hình
+                        document.getElementById('electricityPrice').value = config.electricity || 3500;
+                        document.getElementById('waterPrice').value = config.water || 20000;
+                        document.getElementById('wifiCost').value = config.wifi || 50000;
+                        document.getElementById('garbageCost').value = config.garbage || 20000;
+                    }
+                })
+                .catch((error) => {
+                    console.error('Lỗi khi tải cấu hình giá:', error);
+                });
+        }
         
         // Tải danh sách phòng đã thuê
         function loadOccupiedRooms() {
