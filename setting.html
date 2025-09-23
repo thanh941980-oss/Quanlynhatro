@@ -106,19 +106,61 @@ const firebaseConfig={apiKey:"AIzaSyAz38ll5L6nZOicZyQRFtKd0TuzohrLFws",authDomai
 firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth();const database=firebase.database();
 
-auth.onAuthStateChanged(user=>{if(!user){window.location.href='index.html';}else{document.getElementById('userEmail').value=user.email;loadBankConfig();}});
+auth.onAuthStateChanged(user=>{
+  if(!user){window.location.href='index.html';}
+  else{
+    document.getElementById('userEmail').value=user.email;
+    loadBankConfig();
+  }
+});
 
 // Tab switch
-document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab-content').forEach(tab=>tab.classList.remove('active'));document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.getElementById(btn.dataset.tab).classList.add('active');btn.classList.add('active');}));
+document.querySelectorAll('.tab-btn').forEach(btn=>
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-content').forEach(tab=>tab.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById(btn.dataset.tab).classList.add('active');
+    btn.classList.add('active');
+  })
+);
 
 // Save bank config
-document.getElementById('saveBankConfigBtn').addEventListener('click',()=>{const bankName=document.getElementById('bankName').value;const bankAccount=document.getElementById('bankAccount').value;const accountName = document.getElementById('accountName').value;const bankContent=document.getElementById('bankContent').value;if(!bankName||!bankAccount){alert("Vui lòng nhập đầy đủ");return;}database.ref('config/bank').set({bankName,bankAccount,accountName,bankContent}).then(()=>alert("Lưu thành công"));});
+document.getElementById('saveBankConfigBtn').addEventListener('click',()=>{
+  const bankName=document.getElementById('bankName').value;
+  const bankAccount=document.getElementById('bankAccount').value;
+  const accountName=document.getElementById('accountName').value;
+  const bankContent=document.getElementById('bankContent').value;
+
+  if(!bankName||!bankAccount){
+    alert("Vui lòng nhập đầy đủ");
+    return;
+  }
+
+  database.ref('config/bank').set({
+    bankName,
+    bankAccount,
+    accountName,
+    bankContent
+  }).then(()=>alert("Lưu thành công"));
+});
 
 // Load bank config
-function loadBankConfig(){database.ref('config/bank').once('value').then(snap=>{if(snap.exists()){const d=snap.val();document.getElementById('bankName').value=d.bankName;document.getElementById('bankAccount').value=d.bankAccount;document.getElementById('accountName').value=d.accountName;document.getElementById('bankContent').value=d.bankContent;}});}
+function loadBankConfig(){
+  database.ref('config/bank').once('value').then(snap=>{
+    if(snap.exists()){
+      const d=snap.val();
+      document.getElementById('bankName').value=d.bankName;
+      document.getElementById('bankAccount').value=d.bankAccount;
+      document.getElementById('accountName').value=d.accountName || '';
+      document.getElementById('bankContent').value=d.bankContent;
+    }
+  });
+}
 
 // Logout
-document.getElementById('logoutBtn').addEventListener('click',()=>{auth.signOut().then(()=>{window.location.href='index.html';});});
+document.getElementById('logoutBtn').addEventListener('click',()=>{
+  auth.signOut().then(()=>{window.location.href='index.html';});
+});
 </script>
 </body>
 </html>
