@@ -124,6 +124,30 @@
         .tab-content.active {
             display: block;
         }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        table th, table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .small-btn {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.9rem;
+            margin-right: 5px;
+        }
+        
         /* Responsive cho màn hình nhỏ (mobile) */
         @media (max-width: 768px) {
             header {
@@ -150,6 +174,19 @@
             h2 {
                 font-size: 1.2rem;
                 text-align: center;
+            }
+
+            table {
+                font-size: 0.8rem;
+            }
+
+            .tab-buttons {
+                flex-wrap: wrap;
+            }
+
+            .tab-btn {
+                padding: 8px 12px;
+                font-size: 0.9rem;
             }
         }
     </style>
@@ -215,6 +252,17 @@
                     <div class="form-group">
                         <label for="defaultWaterPrice">Giá nước mặc định (VNĐ/m³)</label>
                         <input type="number" id="defaultWaterPrice" placeholder="Giá nước">
+                    </div>
+
+                    <!-- Bổ sung thêm WiFi và rác -->
+                    <div class="form-group">
+                        <label for="defaultWifiPrice">Giá WiFi mặc định (VNĐ/tháng)</label>
+                        <input type="number" id="defaultWifiPrice" placeholder="Giá WiFi">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="defaultGarbagePrice">Giá rác mặc định (VNĐ/tháng)</label>
+                        <input type="number" id="defaultGarbagePrice" placeholder="Giá rác">
                     </div>
                     
                     <button id="savePriceConfigBtn" class="btn">Lưu cấu hình</button>
@@ -327,8 +375,8 @@
                                 <td>${room.area} m²</td>
                                 <td>${room.status === 'available' ? 'Trống' : 'Đã thuê'}</td>
                                 <td>
-                                    <button class="btn edit-room-btn" data-id="${childSnapshot.key}">Sửa</button>
-                                    <button class="btn delete-room-btn" data-id="${childSnapshot.key}">Xóa</button>
+                                    <button class="btn small-btn edit-room-btn" data-id="${childSnapshot.key}">Sửa</button>
+                                    <button class="btn small-btn delete-room-btn" data-id="${childSnapshot.key}">Xóa</button>
                                 </td>
                             `;
                             
@@ -368,6 +416,8 @@
                         const config = snapshot.val();
                         document.getElementById('defaultElectricityPrice').value = config.electricity || 3500;
                         document.getElementById('defaultWaterPrice').value = config.water || 20000;
+                        document.getElementById('defaultWifiPrice').value = config.wifi || 50000;
+                        document.getElementById('defaultGarbagePrice').value = config.garbage || 20000;
                     }
                 })
                 .catch((error) => {
@@ -462,15 +512,19 @@
         document.getElementById('savePriceConfigBtn').addEventListener('click', () => {
             const electricityPrice = document.getElementById('defaultElectricityPrice').value;
             const waterPrice = document.getElementById('defaultWaterPrice').value;
+            const wifiPrice = document.getElementById('defaultWifiPrice').value;
+            const garbagePrice = document.getElementById('defaultGarbagePrice').value;
             
-            if (!electricityPrice || !waterPrice) {
+            if (!electricityPrice || !waterPrice || !wifiPrice || !garbagePrice) {
                 alert('Vui lòng điền đầy đủ thông tin!');
                 return;
             }
             
             database.ref('config/prices').set({
                 electricity: parseInt(electricityPrice),
-                water: parseInt(waterPrice)
+                water: parseInt(waterPrice),
+                wifi: parseInt(wifiPrice),
+                garbage: parseInt(garbagePrice)
             })
             .then(() => {
                 alert('Lưu cấu hình giá thành công!');
