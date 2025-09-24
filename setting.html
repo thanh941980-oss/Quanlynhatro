@@ -111,6 +111,8 @@ auth.onAuthStateChanged(user=>{
   else{
     document.getElementById('userEmail').value=user.email;
     loadBankConfig();
+    loadRooms(); // THÊM DÒNG NÀY
+    loadPriceConfig(); // THÊM DÒNG NÀY
   }
 });
 
