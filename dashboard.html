@@ -87,16 +87,31 @@
         .logout-btn:hover {
             background-color: #c0392b;
         }
-        /* Responsive cho màn hình nhỏ (mobile) */
+        
+        .license-status {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .license-status.activated {
+            border-left-color: #27ae60;
+            background-color: #e8f5e8;
+        }
+        
+        .license-status .btn {
+            margin-top: 10px;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        
         @media (max-width: 768px) {
             header {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 10px;
-            }
-        
-            .form-row {
-                flex-direction: column;
                 gap: 10px;
             }
         
@@ -114,10 +129,15 @@
                 font-size: 1.2rem;
                 text-align: center;
             }
+            
+            .dashboard-menu {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 </head>
 <body>
     <header>
@@ -129,6 +149,12 @@
     </header>
 
     <div class="container">
+        <div id="licenseStatus" class="license-status">
+            <h3>Thông tin bản quyền</h3>
+            <p id="licenseInfo">Đang tải thông tin...</p>
+            <button onclick="window.location.href='license.html'" class="btn">Quản lý bản quyền</button>
+        </div>
+        
         <h2>Dashboard</h2>
         
         <div class="dashboard-menu">
@@ -161,6 +187,11 @@
                 <h3>Cài đặt</h3>
                 <p>Cấu hình hệ thống</p>
             </div>
+            
+            <div class="menu-card" onclick="window.location.href='license.html'">
+                <h3>Bản quyền</h3>
+                <p>Kích hoạt và quản lý bản quyền</p>
+            </div>
         </div>
     </div>
 
@@ -179,6 +210,7 @@
         // Khởi tạo Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
+        const database = firebase.database();
         
         // Kiểm tra trạng thái đăng nhập
         auth.onAuthStateChanged((user) => {
@@ -188,8 +220,47 @@
             } else {
                 // Hiển thị thông tin người dùng
                 document.getElementById('usernameDisplay').textContent = `Xin chào, ${user.email}`;
+                loadLicenseInfo(user);
             }
         });
+        
+        // Tải thông tin bản quyền
+        function loadLicenseInfo(user) {
+            database.ref('licenses/' + user.uid).once('value')
+                .then((snapshot) => {
+                    const licenseInfo = document.getElementById('licenseInfo');
+                    const licenseStatus = document.getElementById('licenseStatus');
+                    
+                    if (snapshot.exists() && snapshot.val().isValid) {
+                        const licenseData = snapshot.val();
+                        licenseInfo.innerHTML = `
+                            <strong>Trạng thái:</strong> Đã kích hoạt<br>
+                            <strong>Ngày kích hoạt:</strong> ${new Date(licenseData.activatedAt).toLocaleDateString('vi-VN')}<br>
+                            <strong>Giới hạn phòng:</strong> Không giới hạn
+                        `;
+                        licenseStatus.classList.add('activated');
+                    } else {
+                        // Đếm số phòng hiện có
+                        database.ref('rooms').orderByChild('userId').equalTo(user.uid).once('value')
+                            .then((roomSnapshot) => {
+                                let roomCount = 0;
+                                if (roomSnapshot.exists()) {
+                                    roomCount = Object.keys(roomSnapshot.val()).length;
+                                }
+                                
+                                licenseInfo.innerHTML = `
+                                    <strong>Trạng thái:</strong> Chưa kích hoạt<br>
+                                    <strong>Giới hạn phòng:</strong> ${roomCount}/3 phòng<br>
+                                    <em>Vui lòng kích hoạt bản quyền để sử dụng không giới hạn</em>
+                                `;
+                            });
+                    }
+                })
+                .catch((error) => {
+                    console.error('Lỗi khi tải thông tin bản quyền:', error);
+                    document.getElementById('licenseInfo').textContent = 'Lỗi khi tải thông tin bản quyền';
+                });
+        }
         
         // Xử lý đăng xuất
         document.getElementById('logoutBtn').addEventListener('click', () => {
