@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kích hoạt bản quyền - Quản lý nhà trọ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .license-container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+        }
+        .license-form {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .license-form h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #2c3e50;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 1rem;
+        }
+        .btn:hover {
+            background-color: #219a52;
+        }
+        .btn-secondary {
+            background-color: #7f8c8d;
+        }
+        .btn-secondary:hover {
+            background-color: #95a5a6;
+        }
+        .license-info {
+            background-color: #e8f5e8;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #27ae60;
+        }
+        .error {
+            color: #c62828;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        .success {
+            color: #27ae60;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .license-container {
+                padding: 10px;
+            }
+            .license-form {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+    <div class="license-container">
+        <div class="license-form">
+            <h2>Kích hoạt bản quyền</h2>
+            
+            <div class="license-info">
+                <p><strong>Phiên bản miễn phí:</strong> Giới hạn 3 phòng</p>
+                <p><strong>Phiên bản có bản quyền:</strong> Không giới hạn số phòng</p>
+                <p><strong>Mã bản quyền mẫu để test:</strong> LICENSE-ABCD-1234-EFGH</p>
+            </div>
+
+            <div class="form-group">
+                <label for="licenseKey">Mã bản quyền</label>
+                <input type="text" id="licenseKey" placeholder="Nhập mã bản quyền">
+            </div>
+            
+            <button id="activateBtn" class="btn">Kích hoạt bản quyền</button>
+            <button onclick="window.location.href='dashboard.html'" class="btn btn-secondary">Quay lại Dashboard</button>
+            
+            <div id="message" class="error"></div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase config
+        const firebaseConfig = { 
+            apiKey: "AIzaSyAz38ll5L6nZOicZyQRFtKd0TuzohrLFws",
+            authDomain: "quan-ly-nha-tro-2a4bf.firebaseapp.com",
+            databaseURL: "https://quan-ly-nha-tro-2a4bf-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "quan-ly-nha-tro-2a4bf",
+            storageBucket: "quan-ly-nha-tro-2a4bf.firebasestorage.app",
+            messagingSenderId: "490747665921",
+            appId: "1:490747665921:web:48b0e2bad3a0f894c22a00"
+        };
+
+        // Khởi tạo Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        // Kiểm tra trạng thái đăng nhập
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // Kích hoạt bản quyền
+        document.getElementById('activateBtn').addEventListener('click', () => {
+            const licenseKey = document.getElementById('licenseKey').value.trim();
+            const messageDiv = document.getElementById('message');
+
+            if (!licenseKey) {
+                messageDiv.textContent = 'Vui lòng nhập mã bản quyền!';
+                messageDiv.className = 'error';
+                return;
+            }
+
+            // Kiểm tra mã bản quyền
+            if (validateLicenseKey(licenseKey)) {
+                const user = auth.currentUser;
+                if (user) {
+                    // Lưu thông tin bản quyền
+                    database.ref('licenses/' + user.uid).set({
+                        licenseKey: licenseKey,
+                        activatedAt: new Date().toISOString(),
+                        isValid: true,
+                        userId: user.uid
+                    })
+                    .then(() => {
+                        messageDiv.textContent = 'Kích hoạt bản quyền thành công!';
+                        messageDiv.className = 'success';
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html';
+                        }, 2000);
+                    })
+                    .catch((error) => {
+                        messageDiv.textContent = 'Lỗi khi kích hoạt: ' + error.message;
+                        messageDiv.className = 'error';
+                    });
+                }
+            } else {
+                messageDiv.textContent = 'Mã bản quyền không hợp lệ!';
+                messageDiv.className = 'error';
+            }
+        });
+
+        // Hàm xác thực mã bản quyền
+        function validateLicenseKey(key) {
+            // Kiểm tra định dạng: LICENSE-XXXX-XXXX-XXXX
+            const licensePattern = /^LICENSE-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+            return licensePattern.test(key);
+        }
+    </script>
+</body>
+</html>
