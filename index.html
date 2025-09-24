@@ -76,22 +76,32 @@
             font-size: 0.9rem;
             margin-top: 0.5rem;
         }
-        .license-info {
-            background-color: #e8f4fd;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 1rem;
-            font-size: 0.8rem;
-            text-align: center;
-            border-left: 3px solid #3498db;
-        }
-        
+        /* Responsive cho màn hình nhỏ (mobile) */
         @media (max-width: 768px) {
-            .auth-container {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        
+            .form-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+        
+            .btn {
+                width: 100%;
+                text-align: center;
+                margin-top: 10px;
+            }
+        
+            .container {
                 padding: 10px;
             }
-            .auth-form {
-                padding: 1.5rem;
+        
+            h2 {
+                font-size: 1.2rem;
+                text-align: center;
             }
         }
     </style>
@@ -114,12 +124,6 @@
             <button id="loginBtn" class="btn">Đăng nhập</button>
             <div id="loginError" class="error"></div>
             <div class="toggle-link" onclick="showRegister()">Chưa có tài khoản? Đăng ký</div>
-            
-            <div class="license-info">
-                <strong>Thông tin bản quyền:</strong><br>
-                Bản miễn phí: Tối đa 3 phòng<br>
-                Bản có bản quyền: Không giới hạn
-            </div>
         </div>
 
         <!-- Form Đăng ký -->
@@ -136,12 +140,6 @@
             <button id="registerBtn" class="btn">Đăng ký</button>
             <div id="registerError" class="error"></div>
             <div class="toggle-link" onclick="showLogin()">Đã có tài khoản? Đăng nhập</div>
-            
-            <div class="license-info">
-                <strong>Thông tin bản quyền:</strong><br>
-                Bản miễn phí: Tối đa 3 phòng<br>
-                Bản có bản quyền: Không giới hạn
-            </div>
         </div>
     </div>
 
@@ -185,9 +183,8 @@
                 .then(() => {
                     window.location.href = 'dashboard.html';
                 })
-                .catch((error) => {
+                .catch(() => {
                     document.getElementById('loginError').textContent = 'Email hoặc mật khẩu không đúng!';
-                    console.error('Lỗi đăng nhập:', error);
                 });
         });
 
