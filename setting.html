@@ -23,7 +23,72 @@
     .tab-btn.active{color:#3498db;border-bottom:3px solid #3498db;}
     .tab-content{display:none;padding:20px 0;}
     .tab-content.active{display:block;}
-  </style>
+    
+    /* CSS mới cho bảng danh sách phòng */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px 8px;
+      text-align: left;
+      word-wrap: break-word;
+    }
+
+    th {
+      background-color: #f2f2f2;
+      font-weight: 600;
+    }
+
+    th:nth-child(1), td:nth-child(1) {
+      width: 15%;
+    }
+
+    th:nth-child(2), td:nth-child(2) {
+      width: 20%;
+    }
+
+    th:nth-child(3), td:nth-child(3) {
+      width: 15%;
+    }
+
+    th:nth-child(4), td:nth-child(4) {
+      width: 15%;
+    }
+
+    th:nth-child(5), td:nth-child(5) {
+      width: 35%;
+      text-align: center;
+    }
+
+    .small-btn {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      margin: 0 3px;
+    }
+
+    @media (max-width: 600px) {
+      table {
+        font-size: 0.8rem;
+      }
+      
+      th, td {
+        padding: 8px 5px;
+      }
+      
+      .small-btn {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+        margin: 2px 1px;
+        display: block;
+        width: 100%;
+      }
+    }
+</style>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
