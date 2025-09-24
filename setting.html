@@ -205,8 +205,8 @@ function loadRooms() {
         const room=child.val();
         const row=document.createElement('tr');
         row.innerHTML=`<td>${room.number}</td>
-          <td>${room.price ? room.price.toLocaleString('vi-VN') : '0'} VNĐ</td>
-          <td>${room.area || '0'} m²</td>
+          <td>${room.price.toLocaleString('vi-VN')} VNĐ</td>
+          <td>${room.area} m²</td>
           <td>${room.status==='available'?'Trống':'Đã thuê'}</td>
           <td>
             <button class="btn small-btn edit-room-btn" data-id="${child.key}">Sửa</button>
@@ -271,77 +271,28 @@ function attachRoomActions() {
   });
 }
 
+
 document.getElementById('addRoomBtn').addEventListener('click', async () => {
-  const roomNumber = document.getElementById('roomNumber').value.trim();
-  const roomPrice = document.getElementById('roomPrice').value;
-  const roomArea = document.getElementById('roomArea').value;
-  
-  // Kiểm tra dữ liệu đầu vào
-  if (!roomNumber) {
-    alert('Vui lòng nhập số phòng!');
-    return;
-  }
-  if (!roomPrice || isNaN(roomPrice) || parseInt(roomPrice) <= 0) {
-    alert('Vui lòng nhập giá phòng hợp lệ!');
-    return;
-  }
-  if (!roomArea || isNaN(roomArea) || parseInt(roomArea) <= 0) {
-    alert('Vui lòng nhập diện tích hợp lệ!');
-    return;
-  }
-  
-  try {
-    // Kiểm tra xem phòng đã tồn tại chưa
-    const roomsSnap = await database.ref('rooms').once('value');
-    let roomExists = false;
-    if (roomsSnap.exists()) {
-      roomsSnap.forEach(child => {
-        const room = child.val();
-        if (room.number === roomNumber) {
-          roomExists = true;
-        }
-      });
+  const roomNumber=document.getElementById('roomNumber').value.trim();
+  const roomPrice=document.getElementById('roomPrice').value;
+  const roomArea=document.getElementById('roomArea').value;
+  if(!roomNumber||!roomPrice||!roomArea){alert('Vui lòng điền đầy đủ thông tin!');return;}
+  try{
+    const licenseSnap=await database.ref('config/license').once('value');
+    const license=licenseSnap.exists()?licenseSnap.val():{licensed:false};
+    if(!license.licensed){
+      const roomsSnap=await database.ref('rooms').once('value');
+      const totalRooms=roomsSnap.exists()?Object.keys(roomsSnap.val()).length:0;
+      if(totalRooms>=3){alert('Phiên bản miễn phí chỉ cho phép tối đa 3 phòng.');return;}
     }
-    
-    if (roomExists) {
-      alert('Số phòng đã tồn tại! Vui lòng nhập số phòng khác.');
-      return;
-    }
-    
-    // Kiểm tra giới hạn bản quyền
-    const licenseSnap = await database.ref('config/license').once('value');
-    const license = licenseSnap.exists() ? licenseSnap.val() : {licensed: false};
-    
-    if (!license.licensed) {
-      const totalRooms = roomsSnap.exists() ? Object.keys(roomsSnap.val()).length : 0;
-      if (totalRooms >= 3) {
-        alert('Phiên bản miễn phí chỉ cho phép tối đa 3 phòng. Vui lòng kích hoạt bản quyền để thêm nhiều phòng hơn.');
-        return;
-      }
-    }
-    
-    // Thêm phòng mới
-    const roomData = {
-      number: roomNumber,
-      price: parseInt(roomPrice),
-      area: parseInt(roomArea),
-      status: 'available',
-      createdAt: new Date().toISOString()
-    };
-    
+    const roomData={number:roomNumber,price:parseInt(roomPrice),area:parseInt(roomArea),status:'available',createdAt:new Date().toISOString()};
     await database.ref('rooms').push(roomData);
     alert('Thêm phòng thành công!');
-    
-    // Reset form
-    document.getElementById('roomNumber').value = '';
-    document.getElementById('roomPrice').value = '';
-    document.getElementById('roomArea').value = '';
-    
+    document.getElementById('roomNumber').value='';
+    document.getElementById('roomPrice').value='';
+    document.getElementById('roomArea').value='';
     loadRooms();
-  } catch(err) {
-    console.error(err);
-    alert('Lỗi khi thêm phòng: ' + err.message);
-  }
+  }catch(err){console.error(err);alert('Lỗi khi thêm phòng');}
 });
 
 // --- Price config ---
@@ -393,7 +344,6 @@ document.getElementById('activateLicenseBtn').addEventListener('click', async ()
       document.getElementById('licenseMsg').textContent='✅ Đã kích hoạt bản quyền thành công!';
       document.getElementById('licenseMsg').style.color='green';
       document.getElementById('licenseStatus').textContent='Đã cấp bản quyền';
-      alert('Kích hoạt bản quyền thành công! Bây giờ bạn có thể thêm không giới hạn số phòng.');
     }else{
       document.getElementById('licenseMsg').textContent='❌ Mã bản quyền không hợp lệ!';
       document.getElementById('licenseMsg').style.color='red';
