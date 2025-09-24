@@ -382,9 +382,10 @@ function loadBankConfig(){
         });
 /////////////////////////////////////////////////////////
   // Gắn sự kiện cho các nút
-document.getElementById("addRoomBtn").addEventListener("click", addRoom);
-document.getElementById("savePriceConfigBtn").addEventListener("click", savePriceConfig);
-document.getElementById("saveUserSettingsBtn").addEventListener("click", saveUserSettings);
+// document.getElementById("addRoomBtn").addEventListener("click", addRoom);
+// document.getElementById("savePriceConfigBtn").addEventListener("click", savePriceConfig);
+// document.getElementById("saveUserSettingsBtn").addEventListener("click", saveUserSettings);
+  
 // Logout
 document.getElementById('logoutBtn').addEventListener('click',()=>{
   auth.signOut().then(()=>{window.location.href='index.html';});
