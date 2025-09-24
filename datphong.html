@@ -16,7 +16,7 @@
         background-color: #f5f5f5;
         color: #333;
         line-height: 1.6;
-        font-size: 14px; /* Thêm dòng này */
+        font-size: 14px;
     }
     
     header {
@@ -43,27 +43,27 @@
     }
     
     .form-group {
-        margin-bottom: 0.7rem; /* Giảm từ 1rem xuống 0.7rem */
+        margin-bottom: 0.7rem;
     }
     
     .form-group label {
         display: block;
-        margin-bottom: 0.3rem; /* Giảm từ 0.5rem xuống 0.3rem */
+        margin-bottom: 0.3rem;
         font-weight: 500;
     }
     
     .form-group input, .form-group select, .form-group textarea {
         width: 100%;
-        padding: 0.5rem; /* Giảm từ 0.75rem xuống 0.5rem */
+        padding: 0.5rem;
         border: 1px solid #ddd;
         border-radius: 4px;
-        font-size: 0.9rem; /* Giảm từ 1rem xuống 0.9rem */
+        font-size: 0.9rem;
     }
     
     .form-row {
         display: flex;
-        gap: 15px; /* Giảm từ 20px xuống 15px */
-        margin-bottom: 0.7rem; /* Giảm từ 1rem xuống 0.7rem */
+        gap: 15px;
+        margin-bottom: 0.7rem;
     }
     
     .form-row .form-group {
@@ -72,12 +72,12 @@
     
     .btn {
         display: inline-block;
-        padding: 0.6rem 1.2rem; /* Giảm padding */
+        padding: 0.6rem 1.2rem;
         background-color: #3498db;
         color: white;
         border: none;
         border-radius: 4px;
-        font-size: 0.9rem; /* Giảm font-size */
+        font-size: 0.9rem;
         cursor: pointer;
         transition: background-color 0.3s;
     }
@@ -102,7 +102,16 @@
         background-color: #c0392b;
     }
     
-    /* Responsive cho màn hình nhỏ (mobile) */
+    .license-warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 15px;
+        display: none;
+    }
+    
     @media (max-width: 768px) {
         header {
             flex-direction: column;
@@ -146,6 +155,11 @@
 
     <div class="container">
         <h2>Thông tin đặt phòng</h2>
+        
+        <div class="license-warning" id="licenseWarning">
+            <strong>Cảnh báo:</strong> Phiên bản miễn phí giới hạn 3 phòng. Bạn đã đạt giới hạn. 
+            <a href="license.html" style="color: #007bff; text-decoration: underline;">Kích hoạt bản quyền</a> để thêm nhiều phòng hơn.
+        </div>
         
         <div class="form-container">
             <div class="form-row">
@@ -222,12 +236,38 @@
             if (!user) {
                 window.location.href = 'index.html';
             } else {
-                loadAvailableRooms();
+                loadAvailableRooms(user);
+                checkLicenseStatus(user);
             }
         });
         
+        // Kiểm tra trạng thái bản quyền
+        async function checkLicenseStatus(user) {
+            try {
+                const licenseSnapshot = await database.ref('licenses/' + user.uid).once('value');
+                const hasValidLicense = licenseSnapshot.exists() && licenseSnapshot.val().isValid === true;
+                
+                if (!hasValidLicense) {
+                    // Kiểm tra số phòng hiện có
+                    const roomsSnapshot = await database.ref('rooms').orderByChild('userId').equalTo(user.uid).once('value');
+                    let roomCount = 0;
+                    if (roomsSnapshot.exists()) {
+                        roomCount = Object.keys(roomsSnapshot.val()).length;
+                    }
+                    
+                    if (roomCount >= 3) {
+                        document.getElementById('licenseWarning').style.display = 'block';
+                        document.getElementById('saveBtn').disabled = true;
+                        document.getElementById('saveBtn').style.backgroundColor = '#ccc';
+                    }
+                }
+            } catch (error) {
+                console.error('Lỗi khi kiểm tra bản quyền:', error);
+            }
+        }
+        
         // Tải danh sách phòng trống
-        function loadAvailableRooms() {
+        function loadAvailableRooms(user) {
             database.ref('rooms').orderByChild('status').equalTo('available').once('value')
                 .then((snapshot) => {
                     const roomSelect = document.getElementById('roomSelect');
@@ -236,11 +276,14 @@
                     if (snapshot.exists()) {
                         snapshot.forEach((childSnapshot) => {
                             const room = childSnapshot.val();
-                            const option = document.createElement('option');
-                            option.value = childSnapshot.key;
-                            option.textContent = `Phòng ${room.number} - ${room.price.toLocaleString('vi-VN')} VNĐ`;
-                            option.setAttribute("data-price", room.price); // lưu giá vào option
-                            roomSelect.appendChild(option);
+                            // Chỉ hiển thị phòng của user hiện tại hoặc phòng chưa có user
+                            if (!room.userId || room.userId === user.uid) {
+                                const option = document.createElement('option');
+                                option.value = childSnapshot.key;
+                                option.textContent = `Phòng ${room.number} - ${room.price.toLocaleString('vi-VN')} VNĐ`;
+                                option.setAttribute("data-price", room.price);
+                                roomSelect.appendChild(option);
+                            }
                         });
                     } else {
                         const option = document.createElement('option');
@@ -264,8 +307,49 @@
             });
         }
         
+        // Hàm kiểm tra bản quyền và giới hạn phòng
+        async function checkRoomLimit(user) {
+            try {
+                // Kiểm tra bản quyền
+                const licenseSnapshot = await database.ref('licenses/' + user.uid).once('value');
+                const hasValidLicense = licenseSnapshot.exists() && licenseSnapshot.val().isValid === true;
+                
+                if (hasValidLicense) {
+                    return true; // Có bản quyền, không giới hạn
+                }
+
+                // Kiểm tra số phòng hiện có
+                const roomsSnapshot = await database.ref('rooms').orderByChild('userId').equalTo(user.uid).once('value');
+                let roomCount = 0;
+                if (roomsSnapshot.exists()) {
+                    roomCount = Object.keys(roomsSnapshot.val()).length;
+                }
+
+                // Giới hạn 3 phòng cho bản miễn phí
+                return roomCount < 3;
+            } catch (error) {
+                console.error('Lỗi khi kiểm tra giới hạn phòng:', error);
+                return false;
+            }
+        }
+        
         // Xử lý lưu thông tin đặt phòng
-        document.getElementById('saveBtn').addEventListener('click', () => {
+        document.getElementById('saveBtn').addEventListener('click', async () => {
+            const user = auth.currentUser;
+            if (!user) {
+                alert('Vui lòng đăng nhập!');
+                return;
+            }
+
+            // Kiểm tra giới hạn phòng
+            const canAddRoom = await checkRoomLimit(user);
+            
+            if (!canAddRoom) {
+                alert('Phiên bản miễn phí giới hạn 3 phòng. Vui lòng kích hoạt bản quyền để thêm nhiều phòng hơn.');
+                window.location.href = 'license.html';
+                return;
+            }
+
             const roomId = document.getElementById('roomSelect').value;
             const customerName = document.getElementById('customerName').value;
             const idNumber = document.getElementById('idNumber').value;
@@ -290,24 +374,30 @@
                 sharedCustomers: sharedCustomers,
                 notes: notes,
                 bookingDate: new Date().toISOString(),
-                status: 'occupied'
+                status: 'occupied',
+                userId: user.uid
             };
             
-            // Cập nhật trạng thái phòng
-            database.ref('rooms/' + roomId).update({
-                status: 'occupied'
-            });
-            
-            // Lưu thông tin đặt phòng
-            database.ref('bookings').push(bookingData)
-                .then(() => {
-                    alert('Đặt phòng thành công!');
-                    window.location.reload();
-                })
-                .catch((error) => {
-                    console.error('Lỗi khi đặt phòng:', error);
-                    alert('Có lỗi xảy ra khi đặt phòng.');
+            try {
+                // Cập nhật trạng thái phòng
+                await database.ref('rooms/' + roomId).update({
+                    status: 'occupied',
+                    userId: user.uid
                 });
+                
+                // Lưu thông tin đặt phòng
+                await database.ref('bookings').push(bookingData);
+                
+                alert('Đặt phòng thành công!');
+                window.location.reload();
+            } catch (error) {
+                console.error('Lỗi khi đặt phòng:', error);
+                if (error.code === 'PERMISSION_DENIED') {
+                    alert('Bạn không có quyền thực hiện thao tác này!');
+                } else {
+                    alert('Có lỗi xảy ra khi đặt phòng.');
+                }
+            }
         });
         
         // Xử lý đăng xuất
