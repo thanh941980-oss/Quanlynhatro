@@ -204,7 +204,7 @@ function loadRooms() {
       snapshot.forEach(child=>{
         const room=child.val();
         const row=document.createElement('tr');
-        row.innerHTML=`<td>${room.number}</td>
+        row.innerHTML=`<td>${room.roomNumber}</td>
           <td>${room.price.toLocaleString('vi-VN')} VNĐ</td>
           <td>${room.area} m²</td>
           <td>${room.status==='available'?'Trống':'Đã thuê'}</td>
