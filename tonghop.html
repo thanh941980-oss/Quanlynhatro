@@ -120,6 +120,72 @@
             background-color: #c0392b;
         }
         
+        .tab-container {
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+            background-color: #f8f9fa;
+        }
+        
+        .tab.active {
+            background-color: white;
+            border-color: #ddd;
+            border-bottom-color: white;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .filter-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-container select, .filter-container button {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .export-btn {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .export-btn:hover {
+            background-color: #219653;
+        }
+        
+        .summary-row {
+            font-weight: bold;
+            background-color: #f8f9fa;
+        }
+        
         @media (max-width: 768px) {
             header {
                 flex-direction: column;
@@ -150,11 +216,27 @@
             .stat-value {
                 font-size: 1.5rem;
             }
+            
+            .filter-container {
+                flex-direction: column;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                flex: 1;
+                text-align: center;
+                min-width: 120px;
+            }
         }
     </style>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <!-- Thư viện SheetJS để xuất Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
     <header>
@@ -190,23 +272,101 @@
             </div>
         </div>
         
-        <div class="table-container">
-            <h3>Lịch sử trả phòng gần đây</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Phòng</th>
-                        <th>Khách hàng</th>
-                        <th>Ngày trả</th>
-                        <th>Tổng tiền</th>
-                    </tr>
-                </thead>
-                <tbody id="checkoutHistory">
-                    <!-- Dữ liệu sẽ được thêm bằng JavaScript -->
-                </tbody>
-            </table>
+        <div class="tab-container">
+            <div class="tabs">
+                <div class="tab active" data-tab="checkout-history">Lịch sử trả phòng</div>
+                <div class="tab" data-tab="monthly-summary">Tổng hợp theo tháng/năm</div>
+            </div>
+            
+            <div class="tab-content active" id="checkout-history">
+                <div class="table-container">
+                    <h3>Lịch sử trả phòng gần đây</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Phòng</th>
+                                <th>Khách hàng</th>
+                                <th>Ngày trả</th>
+                                <th>Tổng tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody id="checkoutHistory">
+                            <!-- Dữ liệu sẽ được thêm bằng JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="monthly-summary">
+                <div class="filter-container">
+                    <select id="monthSelect">
+                        <option value="all">Tất cả các tháng</option>
+                        <option value="1">Tháng 1</option>
+                        <option value="2">Tháng 2</option>
+                        <option value="3">Tháng 3</option>
+                        <option value="4">Tháng 4</option>
+                        <option value="5">Tháng 5</option>
+                        <option value="6">Tháng 6</option>
+                        <option value="7">Tháng 7</option>
+                        <option value="8">Tháng 8</option>
+                        <option value="9">Tháng 9</option>
+                        <option value="10">Tháng 10</option>
+                        <option value="11">Tháng 11</option>
+                        <option value="12">Tháng 12</option>
+                    </select>
+                    
+                    <select id="yearSelect">
+                        <!-- Năm sẽ được thêm bằng JavaScript -->
+                    </select>
+                    
+                    <button id="filterBtn" class="btn">Lọc</button>
+                    <button id="exportBtn" class="btn export-btn">Xuất Excel</button>
+                </div>
+                
+                <div class="table-container">
+                    <h3>Tổng hợp theo tháng/năm</h3>
+                    <table id="monthlySummaryTable">
+                        <thead>
+                            <tr>
+                                <th>STT</th>
+                                <th>Số phòng</th>
+                                <th>Ngày tính tiền</th>
+                                <th>Tiền phòng</th>
+                                <th>Điện</th>
+                                <th>Nước</th>
+                                <th>Wifi</th>
+                                <th>Rác</th>
+                                <th>Khác</th>
+                                <th>Tổng</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthlySummaryBody">
+                            <!-- Dữ liệu sẽ được thêm bằng JavaScript -->
+                        </tbody>
+                        <tfoot>
+                            <tr class="summary-row">
+                                <td colspan="3">Tổng cộng</td>
+                                <td id="totalRoomCost">0</td>
+                                <td id="totalElectricity">0</td>
+                                <td id="totalWater">0</td>
+                                <td id="totalWifi">0</td>
+                                <td id="totalGarbage">0</td>
+                                <td id="totalOther">0</td>
+                                <td id="grandTotal">0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
+
+    <footer style="text-align:center; padding:10px; font-size:0.9rem;">
+        © <span id="copyrightYear"></span> Quản lý nhà trọ — Bản quyền <strong id="licenseStatus">Miễn phí</strong>
+        <div style="font-size:0.75rem; margin-top:4px; color:#666;">
+            Nếu đã kích hoạt bản quyền, hệ thống sẽ lưu không giới hạn số phòng.
+        </div>
+    </footer>
 
     <script>
         // Cấu hình Firebase
@@ -237,6 +397,8 @@
                 loadStats();
                 loadCheckoutHistory();
                 loadLicenseStatus();
+                populateYearSelect();
+                loadMonthlySummary();
             }
         });
         
@@ -363,17 +525,213 @@
                     console.error('Lỗi khi đăng xuất:', error);
                 });
         });
+        
+        // Xử lý tab
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Xóa active class từ tất cả các tab và tab content
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Thêm active class vào tab được click
+                tab.classList.add('active');
+                
+                // Hiển thị tab content tương ứng
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+        
+        // Điền danh sách năm vào select
+        function populateYearSelect() {
+            const yearSelect = document.getElementById('yearSelect');
+            const currentYear = new Date().getFullYear();
+            
+            // Thêm các năm từ 2020 đến năm hiện tại + 1
+            for (let year = 2020; year <= currentYear + 1; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = `Năm ${year}`;
+                if (year === currentYear) {
+                    option.selected = true;
+                }
+                yearSelect.appendChild(option);
+            }
+        }
+        
+        // Tải tổng hợp theo tháng/năm
+        function loadMonthlySummary() {
+            const monthSelect = document.getElementById('monthSelect');
+            const yearSelect = document.getElementById('yearSelect');
+            
+            // Lấy dữ liệu từ Firebase
+            database.ref(`users/${currentUser.uid}/bills`).once('value')
+                .then((billsSnapshot) => {
+                    const monthlySummaryBody = document.getElementById('monthlySummaryBody');
+                    monthlySummaryBody.innerHTML = '';
+                    
+                    if (!billsSnapshot.exists()) {
+                        monthlySummaryBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Chưa có dữ liệu hóa đơn</td></tr>';
+                        resetTotals();
+                        return;
+                    }
+                    
+                    const bills = [];
+                    let stt = 1;
+                    
+                    billsSnapshot.forEach((billSnapshot) => {
+                        const bill = billSnapshot.val();
+                        const billDate = new Date(bill.billDate || bill.createdAt);
+                        const billMonth = billDate.getMonth() + 1; // Tháng từ 1-12
+                        const billYear = billDate.getFullYear();
+                        
+                        // Lọc theo tháng và năm
+                        const selectedMonth = monthSelect.value;
+                        const selectedYear = parseInt(yearSelect.value);
+                        
+                        if ((selectedMonth === 'all' || parseInt(selectedMonth) === billMonth) && 
+                            billYear === selectedYear) {
+                            
+                            bills.push({
+                                id: billSnapshot.key,
+                                ...bill,
+                                stt: stt++
+                            });
+                        }
+                    });
+                    
+                    if (bills.length === 0) {
+                        monthlySummaryBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Không có dữ liệu cho tháng/năm đã chọn</td></tr>';
+                        resetTotals();
+                        return;
+                    }
+                    
+                    // Tính tổng các cột
+                    let totalRoomCost = 0;
+                    let totalElectricity = 0;
+                    let totalWater = 0;
+                    let totalWifi = 0;
+                    let totalGarbage = 0;
+                    let totalOther = 0;
+                    let grandTotal = 0;
+                    
+                    // Hiển thị dữ liệu
+                    bills.forEach(bill => {
+                        const row = document.createElement('tr');
+                        
+                        const roomCost = bill.roomCost || 0;
+                        const electricity = bill.electricityCost || 0;
+                        const water = bill.waterCost || 0;
+                        const wifi = bill.wifiCost || 0;
+                        const garbage = bill.garbageCost || 0;
+                        const other = bill.otherCost || 0;
+                        const total = roomCost + electricity + water + wifi + garbage + other;
+                        
+                        totalRoomCost += roomCost;
+                        totalElectricity += electricity;
+                        totalWater += water;
+                        totalWifi += wifi;
+                        totalGarbage += garbage;
+                        totalOther += other;
+                        grandTotal += total;
+                        
+                        row.innerHTML = `
+                            <td>${bill.stt}</td>
+                            <td>Phòng ${bill.roomId}</td>
+                            <td>${bill.billDate ? new Date(bill.billDate).toLocaleDateString('vi-VN') : 'Không có ngày'}</td>
+                            <td>${roomCost.toLocaleString('vi-VN')}</td>
+                            <td>${electricity.toLocaleString('vi-VN')}</td>
+                            <td>${water.toLocaleString('vi-VN')}</td>
+                            <td>${wifi.toLocaleString('vi-VN')}</td>
+                            <td>${garbage.toLocaleString('vi-VN')}</td>
+                            <td>${other.toLocaleString('vi-VN')}</td>
+                            <td>${total.toLocaleString('vi-VN')}</td>
+                        `;
+                        monthlySummaryBody.appendChild(row);
+                    });
+                    
+                    // Cập nhật tổng cộng
+                    document.getElementById('totalRoomCost').textContent = totalRoomCost.toLocaleString('vi-VN');
+                    document.getElementById('totalElectricity').textContent = totalElectricity.toLocaleString('vi-VN');
+                    document.getElementById('totalWater').textContent = totalWater.toLocaleString('vi-VN');
+                    document.getElementById('totalWifi').textContent = totalWifi.toLocaleString('vi-VN');
+                    document.getElementById('totalGarbage').textContent = totalGarbage.toLocaleString('vi-VN');
+                    document.getElementById('totalOther').textContent = totalOther.toLocaleString('vi-VN');
+                    document.getElementById('grandTotal').textContent = grandTotal.toLocaleString('vi-VN');
+                })
+                .catch((error) => {
+                    console.error('Lỗi khi tải tổng hợp theo tháng/năm:', error);
+                    const monthlySummaryBody = document.getElementById('monthlySummaryBody');
+                    monthlySummaryBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: red;">Có lỗi xảy ra khi tải dữ liệu</td></tr>';
+                    resetTotals();
+                });
+        }
+        
+        // Reset tổng cộng về 0
+        function resetTotals() {
+            document.getElementById('totalRoomCost').textContent = '0';
+            document.getElementById('totalElectricity').textContent = '0';
+            document.getElementById('totalWater').textContent = '0';
+            document.getElementById('totalWifi').textContent = '0';
+            document.getElementById('totalGarbage').textContent = '0';
+            document.getElementById('totalOther').textContent = '0';
+            document.getElementById('grandTotal').textContent = '0';
+        }
+        
+        // Xử lý nút lọc
+        document.getElementById('filterBtn').addEventListener('click', loadMonthlySummary);
+        
+        // Xử lý xuất Excel
+        document.getElementById('exportBtn').addEventListener('click', exportToExcel);
+        
+        // Xuất dữ liệu ra Excel
+        function exportToExcel() {
+            // Lấy dữ liệu từ bảng
+            const table = document.getElementById('monthlySummaryTable');
+            const data = [];
+            
+            // Lấy tiêu đề
+            const headers = [];
+            for (let i = 0; i < table.rows[0].cells.length; i++) {
+                headers.push(table.rows[0].cells[i].textContent);
+            }
+            data.push(headers);
+            
+            // Lấy dữ liệu từ các hàng
+            for (let i = 1; i < table.rows.length - 1; i++) { // Bỏ qua hàng tổng cộng
+                const row = table.rows[i];
+                const rowData = [];
+                
+                for (let j = 0; j < row.cells.length; j++) {
+                    // Loại bỏ ký tự phân cách hàng nghìn (dấu chấm) để chuyển thành số
+                    let cellText = row.cells[j].textContent;
+                    if (j >= 3) { // Các cột số từ cột thứ 4 (tiền phòng)
+                        cellText = cellText.replace(/\./g, '');
+                    }
+                    rowData.push(cellText);
+                }
+                
+                data.push(rowData);
+            }
+            
+            // Tạo worksheet
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            
+            // Tạo workbook và thêm worksheet
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Tổng hợp");
+            
+            // Xuất file Excel
+            const monthSelect = document.getElementById('monthSelect');
+            const yearSelect = document.getElementById('yearSelect');
+            const monthText = monthSelect.value === 'all' ? 'Tất cả' : `Tháng ${monthSelect.value}`;
+            const fileName = `Tổng hợp ${monthText} năm ${yearSelect.value}.xlsx`;
+            
+            XLSX.writeFile(wb, fileName);
+        }
+        
+        // Cập nhật năm bản quyền
+        document.getElementById('copyrightYear').textContent = new Date().getFullYear();
     </script>
-
-<footer style="text-align:center; padding:10px; font-size:0.9rem;">
-  © <span id="copyrightYear"></span> Quản lý nhà trọ — Bản quyền <strong id="licenseStatus">Miễn phí</strong>
-  <div style="font-size:0.75rem; margin-top:4px; color:#666;">
-    Nếu đã kích hoạt bản quyền, hệ thống sẽ lưu không giới hạn số phòng.
-  </div>
-</footer>
-<script>
-  document.getElementById('copyrightYear').textContent = new Date().getFullYear();
-</script>
-
 </body>
 </html>
