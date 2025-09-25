@@ -320,7 +320,7 @@ document.getElementById('addRoomBtn').addEventListener('click', async () => {
     const roomsSnap = await database.ref(`users/${currentUser.uid}/rooms`).once('value');
     const roomCount = roomsSnap.exists() ? Object.keys(roomsSnap.val()).length : 0;
     
-    if (roomCount >= 5) {
+    if (roomCount >= 3) {
       alert('Bản miễn phí chỉ cho phép tối đa 3 phòng. Vui lòng kích hoạt bản quyền để thêm nhiều phòng hơn.');
       return;
     }
@@ -361,10 +361,10 @@ function loadPriceConfig(){
   database.ref(`users/${currentUser.uid}/config/prices`).once('value').then(snap=>{
     if(snap.exists()){
       const c=snap.val();
-      document.getElementById('defaultElectricityPrice').value=c.electricity||3500;
-      document.getElementById('defaultWaterPrice').value=c.water||20000;
-      document.getElementById('defaultWifiPrice').value=c.wifi||50000;
-      document.getElementById('defaultGarbagePrice').value=c.garbage||20000;
+      document.getElementById('defaultElectricityPrice').value=c.electricity??3500;
+      document.getElementById('defaultWaterPrice').value=c.water??20000;
+      document.getElementById('defaultWifiPrice').value=c.wifi??50000;
+      document.getElementById('defaultGarbagePrice').value=c.garbage??20000;
     }
   });
 }
