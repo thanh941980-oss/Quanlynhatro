@@ -120,6 +120,7 @@
             background-color: #c0392b;
         }
         
+        /* CSS cho tab mới */
         .tab-container {
             margin-top: 20px;
             margin-bottom: 20px;
@@ -129,16 +130,23 @@
             display: flex;
             border-bottom: 1px solid #ddd;
             margin-bottom: 20px;
+            background-color: #f8f9fa;
+            border-radius: 4px 4px 0 0;
         }
         
         .tab {
-            padding: 10px 20px;
+            padding: 12px 20px;
             cursor: pointer;
             border: 1px solid transparent;
             border-bottom: none;
             border-radius: 4px 4px 0 0;
             margin-right: 5px;
-            background-color: #f8f9fa;
+            background-color: #e9ecef;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            background-color: #dee2e6;
         }
         
         .tab.active {
@@ -146,10 +154,12 @@
             border-color: #ddd;
             border-bottom-color: white;
             font-weight: bold;
+            color: #2c3e50;
         }
         
         .tab-content {
             display: none;
+            padding: 0;
         }
         
         .tab-content.active {
@@ -161,12 +171,17 @@
             gap: 15px;
             margin-bottom: 20px;
             flex-wrap: wrap;
+            align-items: center;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
         }
         
         .filter-container select, .filter-container button {
             padding: 8px 15px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            font-size: 14px;
         }
         
         .export-btn {
@@ -184,6 +199,10 @@
         .summary-row {
             font-weight: bold;
             background-color: #f8f9fa;
+        }
+        
+        .summary-row td {
+            border-top: 2px solid #ddd;
         }
         
         @media (max-width: 768px) {
@@ -219,6 +238,7 @@
             
             .filter-container {
                 flex-direction: column;
+                align-items: stretch;
             }
             
             .tabs {
@@ -399,10 +419,47 @@
                 loadLicenseStatus();
                 populateYearSelect();
                 loadMonthlySummary();
+                
+                // Thêm sự kiện cho tab sau khi trang đã tải xong
+                setTimeout(initializeTabs, 100);
             }
         });
         
-        // Tải thống kê - ĐÃ SỬA
+        // Khởi tạo tab
+        function initializeTabs() {
+            console.log('Initializing tabs...');
+            const tabs = document.querySelectorAll('.tab');
+            console.log('Found tabs:', tabs.length);
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    console.log('Tab clicked:', tab.getAttribute('data-tab'));
+                    
+                    // Xóa active class từ tất cả các tab và tab content
+                    document.querySelectorAll('.tab').forEach(t => {
+                        t.classList.remove('active');
+                    });
+                    document.querySelectorAll('.tab-content').forEach(c => {
+                        c.classList.remove('active');
+                    });
+                    
+                    // Thêm active class vào tab được click
+                    tab.classList.add('active');
+                    
+                    // Hiển thị tab content tương ứng
+                    const tabId = tab.getAttribute('data-tab');
+                    const tabContent = document.getElementById(tabId);
+                    if (tabContent) {
+                        tabContent.classList.add('active');
+                        console.log('Showing tab content:', tabId);
+                    } else {
+                        console.error('Tab content not found:', tabId);
+                    }
+                });
+            });
+        }
+        
+        // Tải thống kê
         function loadStats() {
             // Tải thông tin phòng theo user ID
             database.ref(`users/${currentUser.uid}/rooms`).once('value')
@@ -458,7 +515,7 @@
                 });
         }
         
-        // Tải lịch sử trả phòng - ĐÃ SỬA
+        // Tải lịch sử trả phòng
         function loadCheckoutHistory() {
             database.ref(`users/${currentUser.uid}/checkouts`).orderByChild('checkoutDate').limitToLast(10).once('value')
                 .then((checkoutsSnapshot) => {
@@ -524,22 +581,6 @@
                 .catch((error) => {
                     console.error('Lỗi khi đăng xuất:', error);
                 });
-        });
-        
-        // Xử lý tab
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', () => {
-                // Xóa active class từ tất cả các tab và tab content
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                
-                // Thêm active class vào tab được click
-                tab.classList.add('active');
-                
-                // Hiển thị tab content tương ứng
-                const tabId = tab.getAttribute('data-tab');
-                document.getElementById(tabId).classList.add('active');
-            });
         });
         
         // Điền danh sách năm vào select
@@ -713,6 +754,17 @@
                 
                 data.push(rowData);
             }
+            
+            // Thêm hàng tổng cộng
+            const footerRow = [];
+            for (let i = 0; i < table.rows[table.rows.length-1].cells.length; i++) {
+                let cellText = table.rows[table.rows.length-1].cells[i].textContent;
+                if (i >= 3) { // Các cột số từ cột thứ 4
+                    cellText = cellText.replace(/\./g, '');
+                }
+                footerRow.push(cellText);
+            }
+            data.push(footerRow);
             
             // Tạo worksheet
             const ws = XLSX.utils.aoa_to_sheet(data);
