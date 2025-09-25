@@ -320,7 +320,7 @@ document.getElementById('addRoomBtn').addEventListener('click', async () => {
     const roomsSnap = await database.ref(`users/${currentUser.uid}/rooms`).once('value');
     const roomCount = roomsSnap.exists() ? Object.keys(roomsSnap.val()).length : 0;
     
-    if (roomCount >= 3) {
+    if (roomCount >= 5) {
       alert('Bản miễn phí chỉ cho phép tối đa 3 phòng. Vui lòng kích hoạt bản quyền để thêm nhiều phòng hơn.');
       return;
     }
