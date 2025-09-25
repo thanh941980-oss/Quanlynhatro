@@ -82,15 +82,22 @@
         window.location.href = "index.html";
       } else {
         currentUser = user;
+        console.log('User ID:', user.uid);
         loadTenants();
         loadLicenseStatus();
       }
     });
 
     function loadTenants() {
-      database.ref(`users/${currentUser.uid}/bookings`).on("value", snapshot => {
+      const bookingsRef = database.ref(`users/${currentUser.uid}/bookings`);
+      
+      console.log('Loading bookings from:', `users/${currentUser.uid}/bookings`);
+      
+      bookingsRef.on("value", snapshot => {
         const tbody = document.getElementById("tenantList");
         tbody.innerHTML = "";
+        
+        console.log('Bookings snapshot:', snapshot.val());
         
         if (!snapshot.exists()) {
           const tr = document.createElement("tr");
@@ -107,18 +114,30 @@
           const data = child.val();
           const bookingId = child.key;
           
+          console.log('Booking found:', bookingId, data);
+          
           const tr = document.createElement("tr");
           tr.innerHTML = `
             <td>${data.roomId}</td>
-            <td>${data.customerName}</td>
-            <td>${data.idNumber}</td>
-            <td>${new Date(data.bookingDate).toLocaleString("vi-VN")}</td>
+            <td>${data.customerName || 'Chưa có tên'}</td>
+            <td>${data.idNumber || 'Chưa có CCCD'}</td>
+            <td>${data.bookingDate ? new Date(data.bookingDate).toLocaleString("vi-VN") : 'Chưa có ngày'}</td>
             <td class="actions-cell">
               <button class="btn delete-btn" onclick="deleteTenant('${bookingId}')">Xóa</button>
             </td>
           `;
           tbody.appendChild(tr);
         });
+      }, error => {
+        console.error('Lỗi khi load tenants:', error);
+        const tbody = document.getElementById("tenantList");
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 20px; color: red;">
+              Lỗi khi tải dữ liệu: ${error.message}
+            </td>
+          </tr>
+        `;
       });
     }
 
@@ -128,7 +147,7 @@
         database.ref(`users/${currentUser.uid}/bookings/${bookingId}`).once('value')
           .then(snapshot => {
             const bookingData = snapshot.val();
-            if (bookingData) {
+            if (bookingData && bookingData.roomId) {
               // Cập nhật phòng về trạng thái trống
               return database.ref(`users/${currentUser.uid}/rooms/${bookingData.roomId}`).update({
                 status: 'available'
@@ -136,6 +155,9 @@
                 // Xóa booking
                 return database.ref(`users/${currentUser.uid}/bookings/${bookingId}`).remove();
               });
+            } else {
+              // Nếu không có roomId, chỉ xóa booking
+              return database.ref(`users/${currentUser.uid}/bookings/${bookingId}`).remove();
             }
           })
           .then(() => {
