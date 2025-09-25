@@ -147,7 +147,6 @@ auth.onAuthStateChanged(user=>{
   }
 });
 
-// Sửa: Load cấu hình giá theo user ID
 function loadPriceConfig(){
   database.ref(`users/${currentUser.uid}/config/prices`).once('value').then(s=>{
     if(s.exists()){
@@ -160,7 +159,6 @@ function loadPriceConfig(){
   });
 }
 
-// Sửa: Load cấu hình ngân hàng theo user ID
 function loadBankConfig(){
   database.ref(`users/${currentUser.uid}/config/bank`).once('value').then(s=>{
     if(s.exists()){
@@ -169,7 +167,6 @@ function loadBankConfig(){
   });
 }
 
-// Sửa: Load phòng đang thuê theo user ID
 function loadOccupiedRooms(){
   database.ref(`users/${currentUser.uid}/rooms`).once('value').then(s=>{
     const sel=document.getElementById('roomSelect');
@@ -184,7 +181,6 @@ function loadOccupiedRooms(){
         
         console.log('Checking room:', roomNumber, room);
         
-        // Chỉ hiển thị phòng có status là 'occupied'
         if(room.status === 'occupied'){
           const opt=document.createElement('option');
           opt.value=roomNumber;
@@ -193,7 +189,6 @@ function loadOccupiedRooms(){
         }
       });
       
-      // Nếu không có phòng nào
       if(sel.options.length === 1){
         const opt=document.createElement('option');
         opt.textContent='Không có phòng đã thuê';
@@ -211,7 +206,6 @@ function loadOccupiedRooms(){
   });
 }
 
-// Sửa: Load thông tin booking theo user ID
 document.getElementById('roomSelect').addEventListener('change',function(){
   const roomId=this.value;
   if(!roomId){
@@ -294,6 +288,7 @@ document.getElementById('generateQRBtn').addEventListener('click',function(){
   qrSection.style.display='block';
 });
 
+// SỬA LẠI PHẦN NÀY: Tạo nội dung Zalo với thông tin đầy đủ
 document.getElementById('copyZaloBtn').addEventListener('click', function(){
   if(currentTotalCost <= 0){
     alert('Vui lòng tính toán trước khi chia sẻ');
@@ -305,32 +300,57 @@ document.getElementById('copyZaloBtn').addEventListener('click', function(){
   }
 
   const today = new Date();
-  const ngay = `${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}`;
-  const content = `${bankConfig.bankContent || 'Thanh toán tiền tháng'} ${ngay}`;
+  const thang = today.getMonth() + 1;
+  const nam = today.getFullYear();
+  const ngay = `${today.getDate()}/${thang}/${nam}`;
+  
+  // Tạo nội dung thanh toán với tháng/năm cụ thể
+  const content = `${bankConfig.bankContent || 'Thanh toán tiền tháng'} ${thang}/${nam}`;
 
-  const qrUrl = `https://img.vietqr.io/image/${bankConfig.bankName}-${bankConfig.bankAccount}-compact2.png?amount=${currentTotalCost}&addInfo=${encodeURIComponent(content)}&accountName=${encodeURIComponent(bankConfig.accountName || '')}`;
+  // Tạo URL QR code với số tiền và nội dung
+  const qrUrl = `https://img.vietqr.io/image/${bankConfig.bankName}-${bankConfig.bankAccount}-compact2.png?amount=${currentTotalCost}&addInfo=${encodeURIComponent(content)}`;
 
+  // Tạo nội dung tin nhắn Zalo chi tiết
   const msg =
-`KẾT QUẢ TÍNH TOÁN
-Tiền điện: ${document.getElementById('electricityCost').textContent} VNĐ
-Tiền nước: ${document.getElementById('waterCost').textContent} VNĐ
-Tiền phòng: ${document.getElementById('roomCost').textContent} VNĐ
-Tiền WiFi: ${document.getElementById('wifiCostDisplay').textContent} VNĐ
-Tiền rác: ${document.getElementById('garbageCostDisplay').textContent} VNĐ
-Tiền khác: ${document.getElementById('otherCostDisplay').textContent} VNĐ
-----------------------
-TỔNG CỘNG: ${document.getElementById('totalCost').textContent} VNĐ
+`💳 *THANH TOÁN TIỀN PHÒNG THÁNG ${thang}/${nam}*
 
-💳 Ngân hàng: ${bankConfig.bankName}
-👤 Chủ TK: ${bankConfig.accountName || '---'}
-🔢 Số TK: ${bankConfig.bankAccount}
+🏠 Phòng: ${currentBooking.roomId}
+👤 Khách hàng: ${currentBooking.customerName}
+📅 Ngày tính: ${ngay}
 
-👉 Quét QR hoặc bấm link để thanh toán:
-${qrUrl}`;
+📊 *CHI TIẾT THANH TOÁN:*
+• Tiền điện: ${document.getElementById('electricityCost').textContent} VNĐ
+• Tiền nước: ${document.getElementById('waterCost').textContent} VNĐ  
+• Tiền phòng: ${document.getElementById('roomCost').textContent} VNĐ
+• Tiền WiFi: ${document.getElementById('wifiCostDisplay').textContent} VNĐ
+• Tiền rác: ${document.getElementById('garbageCostDisplay').textContent} VNĐ
+• Tiền khác: ${document.getElementById('otherCostDisplay').textContent} VNĐ
+─────────────────
+💰 *TỔNG CỘNG: ${document.getElementById('totalCost').textContent} VNĐ*
 
-  navigator.clipboard.writeText(msg).then(() =>
-    showNotification('Đã sao chép! Dán vào Zalo để gửi.')
-  );
+🏦 *THÔNG TIN CHUYỂN KHOẢN:*
+• Ngân hàng: ${bankConfig.bankName}
+• Chủ TK: ${bankConfig.accountName || '---'}
+• Số TK: ${bankConfig.bankAccount}
+• Nội dung: ${content}
+
+📱 *HƯỚNG DẪN THANH TOÁN:*
+1. Chuyển khoản theo thông tin trên
+2. Hoặc quét mã QR bên dưới
+3. Gửi biên lai cho chủ trọ sau khi thanh toán
+
+🔗 *MÃ QR THANH TOÁN:*
+${qrUrl}
+
+_Cảm ơn bạn!_`;
+
+  // Sao chép vào clipboard
+  navigator.clipboard.writeText(msg).then(() => {
+    showNotification('Đã sao chép nội dung thanh toán! Dán vào Zalo để gửi cho khách hàng.');
+  }).catch(err => {
+    console.error('Lỗi sao chép: ', err);
+    showNotification('Lỗi sao chép!', true);
+  });
 });
 
 document.getElementById('openZaloBtn').addEventListener('click',function(){
@@ -357,7 +377,6 @@ function showNotification(msg,isError=false){
   },3000);
 }
 
-// Sửa: Xử lý trả phòng theo user ID
 document.getElementById('checkoutBtn').addEventListener('click',()=>{
   if(!currentBooking)return;
   
@@ -407,7 +426,6 @@ document.getElementById('checkoutBtn').addEventListener('click',()=>{
     notes:document.getElementById('checkoutNotes').value
   };
   
-  // Sửa: Lưu dữ liệu trả phòng theo user ID
   database.ref(`users/${currentUser.uid}/checkouts`).push(checkoutData)
     .then(()=> database.ref(`users/${currentUser.uid}/rooms/${currentBooking.roomId}`).update({status:'available'}))
     .then(()=> database.ref(`users/${currentUser.uid}/bookings/${currentBooking.id}`).remove())
@@ -427,7 +445,6 @@ document.getElementById('logoutBtn').addEventListener('click',()=>{
   });
 });
 
-// Load trạng thái bản quyền
 function loadLicenseStatus(){
   database.ref(`users/${currentUser.uid}/license`).on('value',snap=>{
     if(snap.exists()&&snap.val().licensed){
