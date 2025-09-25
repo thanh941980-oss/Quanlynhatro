@@ -225,42 +225,65 @@
                 window.location.href = 'index.html';
             } else {
                 currentUser = user;
+                console.log('User ID:', user.uid);
                 loadAvailableRooms();
                 loadLicenseStatus();
             }
         });
         
-        // Tải danh sách phòng trống theo user ID
+        // Tải danh sách phòng trống theo user ID - FIXED
         function loadAvailableRooms() {
-            database.ref(`users/${currentUser.uid}/rooms`).orderByChild('status').equalTo('available').once('value')
+            const roomRef = database.ref(`users/${currentUser.uid}/rooms`);
+            
+            roomRef.once('value')
                 .then((snapshot) => {
                     const roomSelect = document.getElementById('roomSelect');
                     roomSelect.innerHTML = '<option value="">-- Chọn phòng --</option>';
 
+                    console.log('Rooms snapshot:', snapshot.val());
+                    
                     if (snapshot.exists()) {
                         snapshot.forEach((childSnapshot) => {
                             const room = childSnapshot.val();
-                            const option = document.createElement('option');
-                            option.value = childSnapshot.key;
-                            option.textContent = `Phòng ${childSnapshot.key} - ${room.price ? room.price.toLocaleString('vi-VN') : '0'} VNĐ`;
-                            option.setAttribute("data-price", room.price || 0);
-                            roomSelect.appendChild(option);
+                            const roomNumber = childSnapshot.key; // Số phòng là key
+                            
+                            console.log('Room found:', roomNumber, room);
+                            
+                            // Chỉ hiển thị phòng có status là 'available'
+                            if (room.status === 'available') {
+                                const option = document.createElement('option');
+                                option.value = roomNumber;
+                                option.textContent = `Phòng ${roomNumber} - ${room.price ? room.price.toLocaleString('vi-VN') : '0'} VNĐ`;
+                                option.setAttribute("data-price", room.price || 0);
+                                roomSelect.appendChild(option);
+                            }
                         });
+                        
+                        // Nếu không có phòng trống nào
+                        if (roomSelect.options.length === 1) {
+                            const option = document.createElement('option');
+                            option.textContent = 'Không có phòng trống';
+                            option.disabled = true;
+                            roomSelect.appendChild(option);
+                        }
                     } else {
                         const option = document.createElement('option');
-                        option.textContent = 'Không có phòng trống';
+                        option.textContent = 'Không có phòng nào';
+                        option.disabled = true;
                         roomSelect.appendChild(option);
                     }
                 })
                 .catch((error) => {
                     console.error('Lỗi khi tải phòng:', error);
+                    const roomSelect = document.getElementById('roomSelect');
+                    roomSelect.innerHTML = '<option value="">-- Lỗi tải phòng --</option>';
                 });
 
             // Khi chọn phòng thì tự điền giá vào ô "Tiền phòng"
             document.getElementById('roomSelect').addEventListener('change', function () {
                 const selectedOption = this.options[this.selectedIndex];
                 const price = selectedOption.getAttribute("data-price");
-                if (price) {
+                if (price && price !== "0") {
                     document.getElementById('roomPrice').value = price;
                 } else {
                     document.getElementById('roomPrice').value = "";
@@ -268,7 +291,7 @@
             });
         }
         
-        // Xử lý lưu thông tin đặt phòng
+        // Xử lý lưu thông tin đặt phòng - FIXED
         document.getElementById('saveBtn').addEventListener('click', async () => {
             const roomId = document.getElementById('roomSelect').value;
             const customerName = document.getElementById('customerName').value;
