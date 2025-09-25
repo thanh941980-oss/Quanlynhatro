@@ -119,16 +119,11 @@
         .logout-btn:hover {
             background-color: #c0392b;
         }
-        /* Responsive cho màn hình nhỏ (mobile) */
+        
         @media (max-width: 768px) {
             header {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 10px;
-            }
-        
-            .form-row {
-                flex-direction: column;
                 gap: 10px;
             }
         
@@ -145,6 +140,15 @@
             h2 {
                 font-size: 1.2rem;
                 text-align: center;
+            }
+            
+            .stats-container {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            
+            .stat-value {
+                font-size: 1.5rem;
             }
         }
     </style>
@@ -182,7 +186,7 @@
             
             <div class="stat-card">
                 <h3>Doanh thu tháng</h3>
-                <div class="stat-value" id="monthlyRevenue">0</div>
+                <div class="stat-value" id="monthlyRevenue">0 VNĐ</div>
             </div>
         </div>
         
@@ -221,24 +225,31 @@
         const auth = firebase.auth();
         const database = firebase.database();
         
+        let currentUser = null;
+        
         // Kiểm tra trạng thái đăng nhập
         auth.onAuthStateChanged((user) => {
             if (!user) {
                 window.location.href = 'index.html';
             } else {
+                currentUser = user;
+                console.log('User ID:', user.uid);
                 loadStats();
                 loadCheckoutHistory();
+                loadLicenseStatus();
             }
         });
         
-        // Tải thống kê
+        // Tải thống kê - ĐÃ SỬA
         function loadStats() {
-            // Tải thông tin phòng
-            database.ref('rooms').once('value')
+            // Tải thông tin phòng theo user ID
+            database.ref(`users/${currentUser.uid}/rooms`).once('value')
                 .then((roomsSnapshot) => {
                     let totalRooms = 0;
                     let availableRooms = 0;
                     let occupiedRooms = 0;
+                    
+                    console.log('Rooms data:', roomsSnapshot.val());
                     
                     if (roomsSnapshot.exists()) {
                         roomsSnapshot.forEach((roomSnapshot) => {
@@ -260,13 +271,15 @@
                     console.error('Lỗi khi tải thống kê phòng:', error);
                 });
             
-            // Tải doanh thu tháng
+            // Tải doanh thu tháng theo user ID
             const currentDate = new Date();
             const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).toISOString();
             
-            database.ref('checkouts').orderByChild('checkoutDate').startAt(firstDayOfMonth).once('value')
+            database.ref(`users/${currentUser.uid}/checkouts`).orderByChild('checkoutDate').startAt(firstDayOfMonth).once('value')
                 .then((checkoutsSnapshot) => {
                     let monthlyRevenue = 0;
+                    
+                    console.log('Checkouts data:', checkoutsSnapshot.val());
                     
                     if (checkoutsSnapshot.exists()) {
                         checkoutsSnapshot.forEach((checkoutSnapshot) => {
@@ -279,55 +292,65 @@
                 })
                 .catch((error) => {
                     console.error('Lỗi khi tải doanh thu:', error);
+                    document.getElementById('monthlyRevenue').textContent = '0 VNĐ';
                 });
         }
         
-        // Tải lịch sử trả phòng
+        // Tải lịch sử trả phòng - ĐÃ SỬA
         function loadCheckoutHistory() {
-            database.ref('checkouts').orderByChild('checkoutDate').limitToLast(10).once('value')
+            database.ref(`users/${currentUser.uid}/checkouts`).orderByChild('checkoutDate').limitToLast(10).once('value')
                 .then((checkoutsSnapshot) => {
                     const checkoutHistory = document.getElementById('checkoutHistory');
                     checkoutHistory.innerHTML = '';
                     
-                    if (checkoutsSnapshot.exists()) {
-                        const checkouts = [];
-                        
-                        checkoutsSnapshot.forEach((checkoutSnapshot) => {
-                            checkouts.push({ id: checkoutSnapshot.key, ...checkoutSnapshot.val() });
-                        });
-                        
-                        // Sắp xếp theo ngày mới nhất
-                        checkouts.reverse();
-                        
-                        checkouts.forEach((checkout) => {
-                            const row = document.createElement('tr');
-                            
-                            // Lấy thông tin phòng
-                            database.ref('rooms/' + checkout.roomId).once('value')
-                                .then((roomSnapshot) => {
-                                    const roomNumber = roomSnapshot.exists() ? roomSnapshot.val().number : 'N/A';
-                                    
-                                    row.innerHTML = `
-                                        <td>Phòng ${roomNumber}</td>
-                                        <td>${checkout.customerName}</td>
-                                        <td>${new Date(checkout.checkoutDate).toLocaleDateString('vi-VN')}</td>
-                                        <td>${(checkout.totalCost || 0).toLocaleString('vi-VN')} VNĐ</td>
-                                    `;
-                                    
-                                    checkoutHistory.appendChild(row);
-                                })
-                                .catch((error) => {
-                                    console.error('Lỗi khi tải thông tin phòng:', error);
-                                });
-                        });
-                    } else {
+                    console.log('Checkout history data:', checkoutsSnapshot.val());
+                    
+                    if (!checkoutsSnapshot.exists()) {
                         checkoutHistory.innerHTML = '<tr><td colspan="4" style="text-align: center;">Chưa có dữ liệu trả phòng</td></tr>';
+                        return;
                     }
+                    
+                    const checkouts = [];
+                    
+                    checkoutsSnapshot.forEach((checkoutSnapshot) => {
+                        checkouts.push({ id: checkoutSnapshot.key, ...checkoutSnapshot.val() });
+                    });
+                    
+                    // Sắp xếp theo ngày mới nhất
+                    checkouts.sort((a, b) => new Date(b.checkoutDate) - new Date(a.checkoutDate));
+                    
+                    if (checkouts.length === 0) {
+                        checkoutHistory.innerHTML = '<tr><td colspan="4" style="text-align: center;">Chưa có dữ liệu trả phòng</td></tr>';
+                        return;
+                    }
+                    
+                    checkouts.forEach((checkout) => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>Phòng ${checkout.roomId}</td>
+                            <td>${checkout.customerName || 'Không có tên'}</td>
+                            <td>${checkout.checkoutDate ? new Date(checkout.checkoutDate).toLocaleDateString('vi-VN') : 'Không có ngày'}</td>
+                            <td>${(checkout.totalCost || 0).toLocaleString('vi-VN')} VNĐ</td>
+                        `;
+                        checkoutHistory.appendChild(row);
+                    });
                 })
                 .catch((error) => {
                     console.error('Lỗi khi tải lịch sử trả phòng:', error);
-                    checkoutHistory.innerHTML = '<tr><td colspan="4" style="text-align: center;">Có lỗi xảy ra khi tải dữ liệu</td></tr>';
+                    const checkoutHistory = document.getElementById('checkoutHistory');
+                    checkoutHistory.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Có lỗi xảy ra khi tải dữ liệu</td></tr>';
                 });
+        }
+        
+        // Load trạng thái bản quyền
+        function loadLicenseStatus(){
+            database.ref(`users/${currentUser.uid}/license`).on('value',snap=>{
+                if(snap.exists()&&snap.val().licensed){
+                    document.getElementById('licenseStatus').textContent='Đã cấp bản quyền';
+                }else{
+                    document.getElementById('licenseStatus').textContent='Miễn phí';
+                }
+            });
         }
         
         // Xử lý đăng xuất
@@ -349,17 +372,7 @@
   </div>
 </footer>
 <script>
-  (function(){
-    document.getElementById('copyrightYear').textContent = new Date().getFullYear();
-    if (typeof firebase !== 'undefined') {
-      try {
-        firebase.database().ref('config/license').once('value').then(snap => {
-          const l = snap.exists() ? snap.val() : { licensed: false };
-          document.getElementById('licenseStatus').textContent = l.licensed ? 'Đã cấp bản quyền' : 'Miễn phí';
-        });
-      } catch(e){}
-    }
-  })();
+  document.getElementById('copyrightYear').textContent = new Date().getFullYear();
 </script>
 
 </body>
