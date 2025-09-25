@@ -132,21 +132,167 @@
 const firebaseConfig={apiKey:"AIzaSyAz38ll5L6nZOicZyQRFtKd0TuzohrLFws",authDomain:"quan-ly-nha-tro-2a4bf.firebaseapp.com",databaseURL:"https://quan-ly-nha-tro-2a4bf-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"quan-ly-nha-tro-2a4bf",storageBucket:"quan-ly-nha-tro-2a4bf.firebasestorage.app",messagingSenderId:"490747665921",appId:"1:490747665921:web:48b0e2bad3a0f894c22a00"};
 firebase.initializeApp(firebaseConfig);const auth=firebase.auth();const database=firebase.database();
 
+let currentUser = null;
 let currentBooking=null;let currentTotalCost=0;let bankConfig={};
 
-auth.onAuthStateChanged(user=>{if(!user){window.location.href='index.html';}else{loadPriceConfig();loadBankConfig();loadOccupiedRooms();}});
+auth.onAuthStateChanged(user=>{
+  if(!user){
+    window.location.href='index.html';
+  }else{
+    currentUser = user;
+    loadPriceConfig();
+    loadBankConfig();
+    loadOccupiedRooms();
+    loadLicenseStatus();
+  }
+});
 
-function loadPriceConfig(){database.ref('config/prices').once('value').then(s=>{if(s.exists()){const c=s.val();document.getElementById('electricityPrice').value=c.electricity||3500;document.getElementById('waterPrice').value=c.water||20000;document.getElementById('wifiCost').value=c.wifi||50000;document.getElementById('garbageCost').value=c.garbage||20000;}});}
-function loadBankConfig(){database.ref('config/bank').once('value').then(s=>{if(s.exists()){bankConfig=s.val();}});}
-function loadOccupiedRooms(){database.ref('rooms').orderByChild('status').equalTo('occupied').once('value').then(s=>{const sel=document.getElementById('roomSelect');sel.innerHTML='<option value="">-- Chọn phòng --</option>';if(s.exists()){s.forEach(cs=>{const r=cs.val();const opt=document.createElement('option');opt.value=cs.key;opt.textContent=`Phòng ${r.number}`;sel.appendChild(opt);});}else{const opt=document.createElement('option');opt.textContent='Không có phòng đã thuê';sel.appendChild(opt);}});}
+// Sửa: Load cấu hình giá theo user ID
+function loadPriceConfig(){
+  database.ref(`users/${currentUser.uid}/config/prices`).once('value').then(s=>{
+    if(s.exists()){
+      const c=s.val();
+      document.getElementById('electricityPrice').value=c.electricity||3500;
+      document.getElementById('waterPrice').value=c.water||20000;
+      document.getElementById('wifiCost').value=c.wifi||50000;
+      document.getElementById('garbageCost').value=c.garbage||20000;
+    }
+  });
+}
 
-document.getElementById('roomSelect').addEventListener('change',function(){const roomId=this.value;if(!roomId){document.getElementById('bookingInfo').style.display='none';return;}database.ref('bookings').orderByChild('roomId').equalTo(roomId).once('value').then(s=>{if(s.exists()){s.forEach(cs=>{currentBooking={id:cs.key,...cs.val()};document.getElementById('customerName').value=currentBooking.customerName;document.getElementById('idNumber').value=currentBooking.idNumber;document.getElementById('initialElectricity').value=currentBooking.initialElectricity;document.getElementById('initialWater').value=currentBooking.initialWater;document.getElementById('bookingInfo').style.display='block';calculateCost();});}else{alert('Không tìm thấy thông tin đặt phòng');}});});
+// Sửa: Load cấu hình ngân hàng theo user ID
+function loadBankConfig(){
+  database.ref(`users/${currentUser.uid}/config/bank`).once('value').then(s=>{
+    if(s.exists()){
+      bankConfig=s.val();
+    }
+  });
+}
 
-function calculateCost(){if(!currentBooking)return;const finalElectricity=parseInt(document.getElementById('finalElectricity').value)||0;const finalWater=parseInt(document.getElementById('finalWater').value)||0;const electricityPrice=parseInt(document.getElementById('electricityPrice').value)||0;const waterPrice=parseInt(document.getElementById('waterPrice').value)||0;const wifiCost=parseInt(document.getElementById('wifiCost').value)||0;const garbageCost=parseInt(document.getElementById('garbageCost').value)||0;const otherCost=parseInt(document.getElementById('otherCost').value)||0;const electricityUsed=finalElectricity-currentBooking.initialElectricity;const waterUsed=finalWater-currentBooking.initialWater;const electricityCost=electricityUsed*electricityPrice;const waterCost=waterUsed*waterPrice;const roomCost=currentBooking.roomPrice;currentTotalCost=electricityCost+waterCost+roomCost+wifiCost+garbageCost+otherCost;document.getElementById('electricityCost').textContent=electricityCost.toLocaleString('vi-VN');document.getElementById('waterCost').textContent=waterCost.toLocaleString('vi-VN');document.getElementById('roomCost').textContent=roomCost.toLocaleString('vi-VN');document.getElementById('wifiCostDisplay').textContent=wifiCost.toLocaleString('vi-VN');document.getElementById('garbageCostDisplay').textContent=garbageCost.toLocaleString('vi-VN');document.getElementById('otherCostDisplay').textContent=otherCost.toLocaleString('vi-VN');document.getElementById('totalCost').textContent=currentTotalCost.toLocaleString('vi-VN');}
+// Sửa: Load phòng đang thuê theo user ID
+function loadOccupiedRooms(){
+  database.ref(`users/${currentUser.uid}/rooms`).once('value').then(s=>{
+    const sel=document.getElementById('roomSelect');
+    sel.innerHTML='<option value="">-- Chọn phòng --</option>';
+    
+    console.log('Occupied rooms data:', s.val());
+    
+    if(s.exists()){
+      s.forEach(cs=>{
+        const room = cs.val();
+        const roomNumber = cs.key;
+        
+        console.log('Checking room:', roomNumber, room);
+        
+        // Chỉ hiển thị phòng có status là 'occupied'
+        if(room.status === 'occupied'){
+          const opt=document.createElement('option');
+          opt.value=roomNumber;
+          opt.textContent=`Phòng ${roomNumber}`;
+          sel.appendChild(opt);
+        }
+      });
+      
+      // Nếu không có phòng nào
+      if(sel.options.length === 1){
+        const opt=document.createElement('option');
+        opt.textContent='Không có phòng đã thuê';
+        opt.disabled=true;
+        sel.appendChild(opt);
+      }
+    }else{
+      const opt=document.createElement('option');
+      opt.textContent='Không có phòng đã thuê';
+      opt.disabled=true;
+      sel.appendChild(opt);
+    }
+  }).catch(error => {
+    console.error('Error loading rooms:', error);
+  });
+}
 
-['finalElectricity','finalWater','electricityPrice','waterPrice','wifiCost','garbageCost','otherCost'].forEach(id=>{document.getElementById(id).addEventListener('input',calculateCost);});
+// Sửa: Load thông tin booking theo user ID
+document.getElementById('roomSelect').addEventListener('change',function(){
+  const roomId=this.value;
+  if(!roomId){
+    document.getElementById('bookingInfo').style.display='none';
+    return;
+  }
+  
+  database.ref(`users/${currentUser.uid}/bookings`).orderByChild('roomId').equalTo(roomId).once('value').then(s=>{
+    if(s.exists()){
+      s.forEach(cs=>{
+        currentBooking={id:cs.key,...cs.val()};
+        document.getElementById('customerName').value=currentBooking.customerName;
+        document.getElementById('idNumber').value=currentBooking.idNumber;
+        document.getElementById('initialElectricity').value=currentBooking.initialElectricity;
+        document.getElementById('initialWater').value=currentBooking.initialWater;
+        document.getElementById('bookingInfo').style.display='block';
+        calculateCost();
+      });
+    }else{
+      alert('Không tìm thấy thông tin đặt phòng');
+    }
+  });
+});
 
-document.getElementById('generateQRBtn').addEventListener('click',function(){if(currentTotalCost<=0){alert('Vui lòng nhập thông tin để tính toán trước khi tạo mã QR');return;}if(!bankConfig.bankName||!bankConfig.bankAccount){alert('Chưa cấu hình ngân hàng trong Cài đặt');return;}const qrSection=document.getElementById('qrSection');const qrCodeDiv=document.getElementById('qrCode');qrCodeDiv.innerHTML='';const today=new Date();const ngay=`${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}`;const content=`${bankConfig.bankContent||'Thanh toán tiền tháng'} ${ngay}`;const qrUrl=`https://img.vietqr.io/image/${bankConfig.bankName}-${bankConfig.bankAccount}-compact2.png?amount=${currentTotalCost}&addInfo=${encodeURIComponent(content)}`;const img=document.createElement('img');img.src=qrUrl;img.style.maxWidth='200px';qrCodeDiv.appendChild(img);qrSection.style.display='block';});
+function calculateCost(){
+  if(!currentBooking)return;
+  const finalElectricity=parseInt(document.getElementById('finalElectricity').value)||0;
+  const finalWater=parseInt(document.getElementById('finalWater').value)||0;
+  const electricityPrice=parseInt(document.getElementById('electricityPrice').value)||0;
+  const waterPrice=parseInt(document.getElementById('waterPrice').value)||0;
+  const wifiCost=parseInt(document.getElementById('wifiCost').value)||0;
+  const garbageCost=parseInt(document.getElementById('garbageCost').value)||0;
+  const otherCost=parseInt(document.getElementById('otherCost').value)||0;
+  
+  const electricityUsed=finalElectricity-currentBooking.initialElectricity;
+  const waterUsed=finalWater-currentBooking.initialWater;
+  const electricityCost=electricityUsed*electricityPrice;
+  const waterCost=waterUsed*waterPrice;
+  const roomCost=currentBooking.roomPrice;
+  
+  currentTotalCost=electricityCost+waterCost+roomCost+wifiCost+garbageCost+otherCost;
+  
+  document.getElementById('electricityCost').textContent=electricityCost.toLocaleString('vi-VN');
+  document.getElementById('waterCost').textContent=waterCost.toLocaleString('vi-VN');
+  document.getElementById('roomCost').textContent=roomCost.toLocaleString('vi-VN');
+  document.getElementById('wifiCostDisplay').textContent=wifiCost.toLocaleString('vi-VN');
+  document.getElementById('garbageCostDisplay').textContent=garbageCost.toLocaleString('vi-VN');
+  document.getElementById('otherCostDisplay').textContent=otherCost.toLocaleString('vi-VN');
+  document.getElementById('totalCost').textContent=currentTotalCost.toLocaleString('vi-VN');
+}
+
+['finalElectricity','finalWater','electricityPrice','waterPrice','wifiCost','garbageCost','otherCost'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',calculateCost);
+});
+
+document.getElementById('generateQRBtn').addEventListener('click',function(){
+  if(currentTotalCost<=0){
+    alert('Vui lòng nhập thông tin để tính toán trước khi tạo mã QR');
+    return;
+  }
+  if(!bankConfig.bankName||!bankConfig.bankAccount){
+    alert('Chưa cấu hình ngân hàng trong Cài đặt');
+    return;
+  }
+  
+  const qrSection=document.getElementById('qrSection');
+  const qrCodeDiv=document.getElementById('qrCode');
+  qrCodeDiv.innerHTML='';
+  
+  const today=new Date();
+  const ngay=`${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}`;
+  const content=`${bankConfig.bankContent||'Thanh toán tiền tháng'} ${ngay}`;
+  
+  const qrUrl=`https://img.vietqr.io/image/${bankConfig.bankName}-${bankConfig.bankAccount}-compact2.png?amount=${currentTotalCost}&addInfo=${encodeURIComponent(content)}`;
+  
+  const img=document.createElement('img');
+  img.src=qrUrl;
+  img.style.maxWidth='200px';
+  qrCodeDiv.appendChild(img);
+  qrSection.style.display='block';
+});
 
 document.getElementById('copyZaloBtn').addEventListener('click', function(){
   if(currentTotalCost <= 0){
@@ -162,7 +308,6 @@ document.getElementById('copyZaloBtn').addEventListener('click', function(){
   const ngay = `${today.getDate()}/${today.getMonth()+1}/${today.getFullYear()}`;
   const content = `${bankConfig.bankContent || 'Thanh toán tiền tháng'} ${ngay}`;
 
-  // ✅ Thêm accountName để hiện tên chủ tài khoản
   const qrUrl = `https://img.vietqr.io/image/${bankConfig.bankName}-${bankConfig.bankAccount}-compact2.png?amount=${currentTotalCost}&addInfo=${encodeURIComponent(content)}&accountName=${encodeURIComponent(bankConfig.accountName || '')}`;
 
   const msg =
@@ -188,13 +333,110 @@ ${qrUrl}`;
   );
 });
 
-document.getElementById('openZaloBtn').addEventListener('click',function(){const isMobile=/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);if(isMobile){window.location.href='zalo://';setTimeout(()=>{window.location.href='https://zalo.me';},1000);}else{window.open('https://zalo.me','_blank');}});
+document.getElementById('openZaloBtn').addEventListener('click',function(){
+  const isMobile=/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  if(isMobile){
+    window.location.href='zalo://';
+    setTimeout(()=>{window.location.href='https://zalo.me';},1000);
+  }else{
+    window.open('https://zalo.me','_blank');
+  }
+});
 
-function showNotification(msg,isError=false){const noti=document.getElementById('notification');noti.textContent=msg;if(isError){noti.classList.add('error');}else{noti.classList.remove('error');}noti.classList.add('show');setTimeout(()=>{noti.classList.remove('show');},3000);}
+function showNotification(msg,isError=false){
+  const noti=document.getElementById('notification');
+  noti.textContent=msg;
+  if(isError){
+    noti.classList.add('error');
+  }else{
+    noti.classList.remove('error');
+  }
+  noti.classList.add('show');
+  setTimeout(()=>{
+    noti.classList.remove('show');
+  },3000);
+}
 
-document.getElementById('checkoutBtn').addEventListener('click',()=>{if(!currentBooking)return;const finalElectricity=parseInt(document.getElementById('finalElectricity').value)||0;const finalWater=parseInt(document.getElementById('finalWater').value)||0;if(finalElectricity<currentBooking.initialElectricity){alert('Chỉ số điện không hợp lệ');return;}if(finalWater<currentBooking.initialWater){alert('Chỉ số nước không hợp lệ');return;}const electricityUsed=finalElectricity-currentBooking.initialElectricity;const waterUsed=finalWater-currentBooking.initialWater;const electricityPrice=parseInt(document.getElementById('electricityPrice').value)||0;const waterPrice=parseInt(document.getElementById('waterPrice').value)||0;const wifiCost=parseInt(document.getElementById('wifiCost').value)||0;const garbageCost=parseInt(document.getElementById('garbageCost').value)||0;const otherCost=parseInt(document.getElementById('otherCost').value)||0;const otherDescription=document.getElementById('otherDescription').value;const roomCost=currentBooking.roomPrice;const totalCost=electricityUsed*electricityPrice+waterUsed*waterPrice+roomCost+wifiCost+garbageCost+otherCost;const checkoutData={roomId:currentBooking.roomId,bookingId:currentBooking.id,customerName:currentBooking.customerName,finalElectricity,finalWater,electricityUsed,waterUsed,electricityPrice,waterPrice,electricityCost:electricityUsed*electricityPrice,waterCost:waterUsed*waterPrice,roomCost,wifiCost,garbageCost,otherCost,otherDescription,totalCost,checkoutDate:new Date().toISOString(),notes:document.getElementById('checkoutNotes').value};database.ref('checkouts').push(checkoutData).then(()=>database.ref('rooms/'+currentBooking.roomId).update({status:'available'})).then(()=>database.ref('bookings/'+currentBooking.id).remove()).then(()=>{alert('Trả phòng thành công!');window.location.reload();});});
+// Sửa: Xử lý trả phòng theo user ID
+document.getElementById('checkoutBtn').addEventListener('click',()=>{
+  if(!currentBooking)return;
+  
+  const finalElectricity=parseInt(document.getElementById('finalElectricity').value)||0;
+  const finalWater=parseInt(document.getElementById('finalWater').value)||0;
+  
+  if(finalElectricity<currentBooking.initialElectricity){
+    alert('Chỉ số điện không hợp lệ');
+    return;
+  }
+  if(finalWater<currentBooking.initialWater){
+    alert('Chỉ số nước không hợp lệ');
+    return;
+  }
+  
+  const electricityUsed=finalElectricity-currentBooking.initialElectricity;
+  const waterUsed=finalWater-currentBooking.initialWater;
+  const electricityPrice=parseInt(document.getElementById('electricityPrice').value)||0;
+  const waterPrice=parseInt(document.getElementById('waterPrice').value)||0;
+  const wifiCost=parseInt(document.getElementById('wifiCost').value)||0;
+  const garbageCost=parseInt(document.getElementById('garbageCost').value)||0;
+  const otherCost=parseInt(document.getElementById('otherCost').value)||0;
+  const otherDescription=document.getElementById('otherDescription').value;
+  const roomCost=currentBooking.roomPrice;
+  
+  const totalCost=electricityUsed*electricityPrice+waterUsed*waterPrice+roomCost+wifiCost+garbageCost+otherCost;
+  
+  const checkoutData={
+    roomId:currentBooking.roomId,
+    bookingId:currentBooking.id,
+    customerName:currentBooking.customerName,
+    finalElectricity,
+    finalWater,
+    electricityUsed,
+    waterUsed,
+    electricityPrice,
+    waterPrice,
+    electricityCost:electricityUsed*electricityPrice,
+    waterCost:waterUsed*waterPrice,
+    roomCost,
+    wifiCost,
+    garbageCost,
+    otherCost,
+    otherDescription,
+    totalCost,
+    checkoutDate:new Date().toISOString(),
+    notes:document.getElementById('checkoutNotes').value
+  };
+  
+  // Sửa: Lưu dữ liệu trả phòng theo user ID
+  database.ref(`users/${currentUser.uid}/checkouts`).push(checkoutData)
+    .then(()=> database.ref(`users/${currentUser.uid}/rooms/${currentBooking.roomId}`).update({status:'available'}))
+    .then(()=> database.ref(`users/${currentUser.uid}/bookings/${currentBooking.id}`).remove())
+    .then(()=>{
+      alert('Trả phòng thành công!');
+      window.location.reload();
+    })
+    .catch(error => {
+      console.error('Error during checkout:', error);
+      alert('Có lỗi xảy ra khi trả phòng');
+    });
+});
 
-document.getElementById('logoutBtn').addEventListener('click',()=>{auth.signOut().then(()=>{window.location.href='index.html';});});
+document.getElementById('logoutBtn').addEventListener('click',()=>{
+  auth.signOut().then(()=>{
+    window.location.href='index.html';
+  });
+});
+
+// Load trạng thái bản quyền
+function loadLicenseStatus(){
+  database.ref(`users/${currentUser.uid}/license`).on('value',snap=>{
+    if(snap.exists()&&snap.val().licensed){
+      document.getElementById('licenseStatus').textContent='Đã cấp bản quyền';
+    }else{
+      document.getElementById('licenseStatus').textContent='Miễn phí';
+    }
+  });
+}
 </script>
 
 <footer style="text-align:center; padding:10px; font-size:0.9rem;">
@@ -204,17 +446,7 @@ document.getElementById('logoutBtn').addEventListener('click',()=>{auth.signOut(
   </div>
 </footer>
 <script>
-  (function(){
-    document.getElementById('copyrightYear').textContent = new Date().getFullYear();
-    if (typeof firebase !== 'undefined') {
-      try {
-        firebase.database().ref('config/license').once('value').then(snap => {
-          const l = snap.exists() ? snap.val() : { licensed: false };
-          document.getElementById('licenseStatus').textContent = l.licensed ? 'Đã cấp bản quyền' : 'Miễn phí';
-        });
-      } catch(e){}
-    }
-  })();
+  document.getElementById('copyrightYear').textContent = new Date().getFullYear();
 </script>
 
 </body>
