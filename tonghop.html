@@ -120,77 +120,53 @@
             background-color: #c0392b;
         }
         
-        /* CSS cho tab mới - ĐÃ SỬA ĐỂ HIỂN THỊ RÕ RÀNG */
         .tab-container {
-            margin-top: 30px;
+            margin-top: 20px;
             margin-bottom: 20px;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
         }
         
         .tabs {
             display: flex;
-            background-color: #f8f9fa;
-            border-bottom: 2px solid #3498db;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
         }
         
         .tab {
-            padding: 15px 25px;
+            padding: 10px 20px;
             cursor: pointer;
-            border: none;
-            background: transparent;
-            font-size: 16px;
-            font-weight: 500;
-            color: #555;
-            transition: all 0.3s ease;
-            border-bottom: 3px solid transparent;
-        }
-        
-        .tab:hover {
-            background-color: #e9ecef;
-            color: #2c3e50;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+            background-color: #f8f9fa;
         }
         
         .tab.active {
             background-color: white;
-            color: #3498db;
-            border-bottom: 3px solid #3498db;
-            font-weight: 600;
+            border-color: #ddd;
+            border-bottom-color: white;
+            font-weight: bold;
         }
         
         .tab-content {
             display: none;
-            padding: 0;
         }
         
         .tab-content.active {
             display: block;
-            animation: fadeIn 0.5s ease;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
         }
         
         .filter-container {
             display: flex;
             gap: 15px;
-            margin: 20px;
+            margin-bottom: 20px;
             flex-wrap: wrap;
-            align-items: center;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
         }
         
         .filter-container select, .filter-container button {
             padding: 8px 15px;
             border: 1px solid #ddd;
             border-radius: 4px;
-            font-size: 14px;
         }
         
         .export-btn {
@@ -208,10 +184,6 @@
         .summary-row {
             font-weight: bold;
             background-color: #f8f9fa;
-        }
-        
-        .summary-row td {
-            border-top: 2px solid #ddd;
         }
         
         @media (max-width: 768px) {
@@ -247,7 +219,6 @@
             
             .filter-container {
                 flex-direction: column;
-                align-items: stretch;
             }
             
             .tabs {
@@ -258,7 +229,6 @@
                 flex: 1;
                 text-align: center;
                 min-width: 120px;
-                padding: 12px 15px;
             }
         }
     </style>
@@ -302,11 +272,10 @@
             </div>
         </div>
         
-        <!-- TAB CONTAINER - ĐÃ ĐƯỢC THIẾT KẾ LẠI ĐỂ HIỂN THỊ RÕ RÀNG -->
         <div class="tab-container">
             <div class="tabs">
-                <div class="tab active" data-tab="checkout-history">📊 Lịch sử trả phòng</div>
-                <div class="tab" data-tab="monthly-summary">📈 Tổng hợp theo tháng/năm</div>
+                <div class="tab active" data-tab="checkout-history">Lịch sử trả phòng</div>
+                <div class="tab" data-tab="monthly-summary">Tổng hợp theo tháng/năm</div>
             </div>
             
             <div class="tab-content active" id="checkout-history">
@@ -350,8 +319,8 @@
                         <!-- Năm sẽ được thêm bằng JavaScript -->
                     </select>
                     
-                    <button id="filterBtn" class="btn">Lọc dữ liệu</button>
-                    <button id="exportBtn" class="btn export-btn">📥 Xuất Excel</button>
+                    <button id="filterBtn" class="btn">Lọc</button>
+                    <button id="exportBtn" class="btn export-btn">Xuất Excel</button>
                 </div>
                 
                 <div class="table-container">
@@ -430,48 +399,10 @@
                 loadLicenseStatus();
                 populateYearSelect();
                 loadMonthlySummary();
-                
-                // Khởi tạo tab ngay sau khi trang tải
-                initializeTabs();
             }
         });
         
-        // Khởi tạo tab - ĐÃ SỬA ĐỂ HOẠT ĐỘNG CHẮC CHẮN
-        function initializeTabs() {
-            console.log('Đang khởi tạo tabs...');
-            
-            const tabs = document.querySelectorAll('.tab');
-            console.log('Tìm thấy số tab:', tabs.length);
-            
-            tabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    console.log('Tab được click:', this.getAttribute('data-tab'));
-                    
-                    // Xóa active class từ tất cả các tab
-                    tabs.forEach(t => t.classList.remove('active'));
-                    
-                    // Thêm active class vào tab được click
-                    this.classList.add('active');
-                    
-                    // Ẩn tất cả nội dung tab
-                    document.querySelectorAll('.tab-content').forEach(content => {
-                        content.classList.remove('active');
-                    });
-                    
-                    // Hiển thị nội dung tab tương ứng
-                    const tabId = this.getAttribute('data-tab');
-                    const targetContent = document.getElementById(tabId);
-                    if (targetContent) {
-                        targetContent.classList.add('active');
-                        console.log('Đang hiển thị tab:', tabId);
-                    }
-                });
-            });
-            
-            console.log('Khởi tạo tabs hoàn tất');
-        }
-        
-        // Tải thống kê
+        // Tải thống kê - ĐÃ SỬA
         function loadStats() {
             // Tải thông tin phòng theo user ID
             database.ref(`users/${currentUser.uid}/rooms`).once('value')
@@ -479,6 +410,8 @@
                     let totalRooms = 0;
                     let availableRooms = 0;
                     let occupiedRooms = 0;
+                    
+                    console.log('Rooms data:', roomsSnapshot.val());
                     
                     if (roomsSnapshot.exists()) {
                         roomsSnapshot.forEach((roomSnapshot) => {
@@ -508,6 +441,8 @@
                 .then((checkoutsSnapshot) => {
                     let monthlyRevenue = 0;
                     
+                    console.log('Checkouts data:', checkoutsSnapshot.val());
+                    
                     if (checkoutsSnapshot.exists()) {
                         checkoutsSnapshot.forEach((checkoutSnapshot) => {
                             const checkout = checkoutSnapshot.val();
@@ -523,12 +458,14 @@
                 });
         }
         
-        // Tải lịch sử trả phòng
+        // Tải lịch sử trả phòng - ĐÃ SỬA
         function loadCheckoutHistory() {
             database.ref(`users/${currentUser.uid}/checkouts`).orderByChild('checkoutDate').limitToLast(10).once('value')
                 .then((checkoutsSnapshot) => {
                     const checkoutHistory = document.getElementById('checkoutHistory');
                     checkoutHistory.innerHTML = '';
+                    
+                    console.log('Checkout history data:', checkoutsSnapshot.val());
                     
                     if (!checkoutsSnapshot.exists()) {
                         checkoutHistory.innerHTML = '<tr><td colspan="4" style="text-align: center;">Chưa có dữ liệu trả phòng</td></tr>';
@@ -587,6 +524,22 @@
                 .catch((error) => {
                     console.error('Lỗi khi đăng xuất:', error);
                 });
+        });
+        
+        // Xử lý tab
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Xóa active class từ tất cả các tab và tab content
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Thêm active class vào tab được click
+                tab.classList.add('active');
+                
+                // Hiển thị tab content tương ứng
+                const tabId = tab.getAttribute('data-tab');
+                document.getElementById(tabId).classList.add('active');
+            });
         });
         
         // Điền danh sách năm vào select
@@ -760,17 +713,6 @@
                 
                 data.push(rowData);
             }
-            
-            // Thêm hàng tổng cộng
-            const footerRow = [];
-            for (let i = 0; i < table.rows[table.rows.length-1].cells.length; i++) {
-                let cellText = table.rows[table.rows.length-1].cells[i].textContent;
-                if (i >= 3) { // Các cột số từ cột thứ 4
-                    cellText = cellText.replace(/\./g, '');
-                }
-                footerRow.push(cellText);
-            }
-            data.push(footerRow);
             
             // Tạo worksheet
             const ws = XLSX.utils.aoa_to_sheet(data);
