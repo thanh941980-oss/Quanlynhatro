@@ -560,17 +560,20 @@
         }
         
         // Tải tổng hợp theo tháng/năm
+        // Tải tổng hợp theo tháng/năm - ĐÃ SỬA
         function loadMonthlySummary() {
             const monthSelect = document.getElementById('monthSelect');
             const yearSelect = document.getElementById('yearSelect');
             
-            // Lấy dữ liệu từ Firebase
-            database.ref(`users/${currentUser.uid}/bills`).once('value')
-                .then((billsSnapshot) => {
+            // Lấy dữ liệu từ Firebase - SỬA: lấy từ checkouts thay vì bills
+            database.ref(`users/${currentUser.uid}/checkouts`).once('value')
+                .then((checkoutsSnapshot) => {
                     const monthlySummaryBody = document.getElementById('monthlySummaryBody');
                     monthlySummaryBody.innerHTML = '';
                     
-                    if (!billsSnapshot.exists()) {
+                    console.log('Checkouts data for monthly summary:', checkoutsSnapshot.val());
+                    
+                    if (!checkoutsSnapshot.exists()) {
                         monthlySummaryBody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Chưa có dữ liệu hóa đơn</td></tr>';
                         resetTotals();
                         return;
@@ -579,23 +582,32 @@
                     const bills = [];
                     let stt = 1;
                     
-                    billsSnapshot.forEach((billSnapshot) => {
-                        const bill = billSnapshot.val();
-                        const billDate = new Date(bill.billDate || bill.createdAt);
-                        const billMonth = billDate.getMonth() + 1; // Tháng từ 1-12
-                        const billYear = billDate.getFullYear();
+                    checkoutsSnapshot.forEach((checkoutSnapshot) => {
+                        const checkout = checkoutSnapshot.val();
+                        const checkoutDate = new Date(checkout.checkoutDate);
+                        const checkoutMonth = checkoutDate.getMonth() + 1; // Tháng từ 1-12
+                        const checkoutYear = checkoutDate.getFullYear();
                         
                         // Lọc theo tháng và năm
                         const selectedMonth = monthSelect.value;
                         const selectedYear = parseInt(yearSelect.value);
                         
-                        if ((selectedMonth === 'all' || parseInt(selectedMonth) === billMonth) && 
-                            billYear === selectedYear) {
+                        if ((selectedMonth === 'all' || parseInt(selectedMonth) === checkoutMonth) && 
+                            checkoutYear === selectedYear) {
                             
                             bills.push({
-                                id: billSnapshot.key,
-                                ...bill,
-                                stt: stt++
+                                id: checkoutSnapshot.key,
+                                ...checkout,
+                                stt: stt++,
+                                // Ánh xạ dữ liệu từ checkout sang định dạng bill
+                                roomId: checkout.roomId,
+                                billDate: checkout.checkoutDate,
+                                roomCost: checkout.roomCost || 0,
+                                electricityCost: checkout.electricityCost || 0,
+                                waterCost: checkout.waterCost || 0,
+                                wifiCost: checkout.wifiCost || 0,
+                                garbageCost: checkout.garbageCost || 0,
+                                otherCost: checkout.otherCost || 0
                             });
                         }
                     });
