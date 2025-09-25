@@ -22,7 +22,7 @@
     .delete-btn:hover { background-color: #c0392b; }
     .actions-cell { width: 100px; text-align: center; }
     
-    /* Cải thiện responsive cho điện thoại - Giống ds-nguoithue.html */
+    /* Cải thiện responsive cho điện thoại */
     @media (max-width: 768px) { 
       header { 
         flex-direction: column; 
@@ -36,7 +36,6 @@
         width: 100%; 
         margin-bottom: 5px; 
       }
-      /* Thêm các quy tắc để đảm bảo nút xóa hiển thị trên điện thoại */
       .table-container {
         padding: 10px;
       }
@@ -53,7 +52,7 @@
       .delete-btn {
         padding: 0.3rem 0.5rem;
         font-size: 0.75rem;
-        width: 100%; /* Đảm bảo nút chiếm toàn bộ chiều rộng ô */
+        width: 100%;
       }
     }
     
@@ -118,18 +117,24 @@
     const auth = firebase.auth();
     const database = firebase.database();
 
+    let currentUser = null;
+
     auth.onAuthStateChanged(user => {
       if (!user) {
         window.location.href = "index.html";
       } else {
+        currentUser = user;
         loadCheckouts();
+        loadLicenseStatus();
       }
     });
 
     function loadCheckouts() {
-      database.ref("checkouts").on("value", snapshot => {
+      database.ref(`users/${currentUser.uid}/checkouts`).on("value", snapshot => {
         const tbody = document.getElementById("checkoutList");
         tbody.innerHTML = "";
+        
+        console.log('Checkouts data:', snapshot.val());
         
         // Kiểm tra nếu không có dữ liệu
         if (!snapshot.exists()) {
@@ -147,43 +152,24 @@
           const data = child.val();
           const checkoutId = child.key;
           
-          database.ref("rooms/" + data.roomId).once("value").then(roomSnap => {
-            const roomData = roomSnap.val();
-            const roomNumber = roomData ? roomData.number : data.roomId;
-            
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td>${roomNumber}</td>
-              <td>${data.customerName}</td>
-              <td>${new Date(data.checkoutDate).toLocaleString("vi-VN")}</td>
-              <td>${data.totalCost ? data.totalCost.toLocaleString("vi-VN") : 0} VNĐ</td>
-              <td class="actions-cell">
-                <button class="btn delete-btn" onclick="deleteCheckout('${checkoutId}')">Xóa</button>
-              </td>
-            `;
-            tbody.appendChild(tr);
-          }).catch(error => {
-            console.error("Lỗi khi lấy thông tin phòng:", error);
-            // Hiển thị dữ liệu ngay cả khi không lấy được thông tin phòng
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td>${data.roomId}</td>
-              <td>${data.customerName}</td>
-              <td>${new Date(data.checkoutDate).toLocaleString("vi-VN")}</td>
-              <td>${data.totalCost ? data.totalCost.toLocaleString("vi-VN") : 0} VNĐ</td>
-              <td class="actions-cell">
-                <button class="btn delete-btn" onclick="deleteCheckout('${checkoutId}')">Xóa</button>
-              </td>
-            `;
-            tbody.appendChild(tr);
-          });
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>Phòng ${data.roomId}</td>
+            <td>${data.customerName}</td>
+            <td>${new Date(data.checkoutDate).toLocaleString("vi-VN")}</td>
+            <td>${data.totalCost ? data.totalCost.toLocaleString("vi-VN") : 0} VNĐ</td>
+            <td class="actions-cell">
+              <button class="btn delete-btn" onclick="deleteCheckout('${checkoutId}')">Xóa</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
         });
       });
     }
 
     function deleteCheckout(checkoutId) {
       if (confirm("Bạn có chắc chắn muốn xóa thông tin trả phòng này?")) {
-        database.ref("checkouts/" + checkoutId).remove()
+        database.ref(`users/${currentUser.uid}/checkouts/${checkoutId}`).remove()
           .then(() => {
             alert("Đã xóa thông tin trả phòng thành công!");
           })
@@ -192,6 +178,17 @@
             alert("Có lỗi xảy ra khi xóa thông tin trả phòng. Vui lòng thử lại.");
           });
       }
+    }
+
+    // Load trạng thái bản quyền
+    function loadLicenseStatus(){
+      database.ref(`users/${currentUser.uid}/license`).on('value',snap=>{
+        if(snap.exists()&&snap.val().licensed){
+          document.getElementById('licenseStatus').textContent='Đã cấp bản quyền';
+        }else{
+          document.getElementById('licenseStatus').textContent='Miễn phí';
+        }
+      });
     }
 
     document.getElementById("logoutBtn").addEventListener("click", () => {
@@ -206,17 +203,7 @@
   </div>
 </footer>
 <script>
-  (function(){
-    document.getElementById('copyrightYear').textContent = new Date().getFullYear();
-    if (typeof firebase !== 'undefined') {
-      try {
-        firebase.database().ref('config/license').once('value').then(snap => {
-          const l = snap.exists() ? snap.val() : { licensed: false };
-          document.getElementById('licenseStatus').textContent = l.licensed ? 'Đã cấp bản quyền' : 'Miễn phí';
-        });
-      } catch(e){}
-    }
-  })();
+  document.getElementById('copyrightYear').textContent = new Date().getFullYear();
 </script>
 
 </body>
