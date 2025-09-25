@@ -120,41 +120,44 @@
             background-color: #c0392b;
         }
         
-        /* CSS cho tab mới */
+        /* CSS cho tab mới - ĐÃ SỬA ĐỂ HIỂN THỊ RÕ RÀNG */
         .tab-container {
-            margin-top: 20px;
+            margin-top: 30px;
             margin-bottom: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
         
         .tabs {
             display: flex;
-            border-bottom: 1px solid #ddd;
-            margin-bottom: 20px;
             background-color: #f8f9fa;
-            border-radius: 4px 4px 0 0;
+            border-bottom: 2px solid #3498db;
         }
         
         .tab {
-            padding: 12px 20px;
+            padding: 15px 25px;
             cursor: pointer;
-            border: 1px solid transparent;
-            border-bottom: none;
-            border-radius: 4px 4px 0 0;
-            margin-right: 5px;
-            background-color: #e9ecef;
-            transition: all 0.3s;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            font-weight: 500;
+            color: #555;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
         }
         
         .tab:hover {
-            background-color: #dee2e6;
+            background-color: #e9ecef;
+            color: #2c3e50;
         }
         
         .tab.active {
             background-color: white;
-            border-color: #ddd;
-            border-bottom-color: white;
-            font-weight: bold;
-            color: #2c3e50;
+            color: #3498db;
+            border-bottom: 3px solid #3498db;
+            font-weight: 600;
         }
         
         .tab-content {
@@ -164,12 +167,18 @@
         
         .tab-content.active {
             display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         
         .filter-container {
             display: flex;
             gap: 15px;
-            margin-bottom: 20px;
+            margin: 20px;
             flex-wrap: wrap;
             align-items: center;
             padding: 15px;
@@ -249,6 +258,7 @@
                 flex: 1;
                 text-align: center;
                 min-width: 120px;
+                padding: 12px 15px;
             }
         }
     </style>
@@ -292,10 +302,11 @@
             </div>
         </div>
         
+        <!-- TAB CONTAINER - ĐÃ ĐƯỢC THIẾT KẾ LẠI ĐỂ HIỂN THỊ RÕ RÀNG -->
         <div class="tab-container">
             <div class="tabs">
-                <div class="tab active" data-tab="checkout-history">Lịch sử trả phòng</div>
-                <div class="tab" data-tab="monthly-summary">Tổng hợp theo tháng/năm</div>
+                <div class="tab active" data-tab="checkout-history">📊 Lịch sử trả phòng</div>
+                <div class="tab" data-tab="monthly-summary">📈 Tổng hợp theo tháng/năm</div>
             </div>
             
             <div class="tab-content active" id="checkout-history">
@@ -339,8 +350,8 @@
                         <!-- Năm sẽ được thêm bằng JavaScript -->
                     </select>
                     
-                    <button id="filterBtn" class="btn">Lọc</button>
-                    <button id="exportBtn" class="btn export-btn">Xuất Excel</button>
+                    <button id="filterBtn" class="btn">Lọc dữ liệu</button>
+                    <button id="exportBtn" class="btn export-btn">📥 Xuất Excel</button>
                 </div>
                 
                 <div class="table-container">
@@ -420,43 +431,44 @@
                 populateYearSelect();
                 loadMonthlySummary();
                 
-                // Thêm sự kiện cho tab sau khi trang đã tải xong
-                setTimeout(initializeTabs, 100);
+                // Khởi tạo tab ngay sau khi trang tải
+                initializeTabs();
             }
         });
         
-        // Khởi tạo tab
+        // Khởi tạo tab - ĐÃ SỬA ĐỂ HOẠT ĐỘNG CHẮC CHẮN
         function initializeTabs() {
-            console.log('Initializing tabs...');
+            console.log('Đang khởi tạo tabs...');
+            
             const tabs = document.querySelectorAll('.tab');
-            console.log('Found tabs:', tabs.length);
+            console.log('Tìm thấy số tab:', tabs.length);
             
             tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    console.log('Tab clicked:', tab.getAttribute('data-tab'));
+                tab.addEventListener('click', function() {
+                    console.log('Tab được click:', this.getAttribute('data-tab'));
                     
-                    // Xóa active class từ tất cả các tab và tab content
-                    document.querySelectorAll('.tab').forEach(t => {
-                        t.classList.remove('active');
-                    });
-                    document.querySelectorAll('.tab-content').forEach(c => {
-                        c.classList.remove('active');
-                    });
+                    // Xóa active class từ tất cả các tab
+                    tabs.forEach(t => t.classList.remove('active'));
                     
                     // Thêm active class vào tab được click
-                    tab.classList.add('active');
+                    this.classList.add('active');
                     
-                    // Hiển thị tab content tương ứng
-                    const tabId = tab.getAttribute('data-tab');
-                    const tabContent = document.getElementById(tabId);
-                    if (tabContent) {
-                        tabContent.classList.add('active');
-                        console.log('Showing tab content:', tabId);
-                    } else {
-                        console.error('Tab content not found:', tabId);
+                    // Ẩn tất cả nội dung tab
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    // Hiển thị nội dung tab tương ứng
+                    const tabId = this.getAttribute('data-tab');
+                    const targetContent = document.getElementById(tabId);
+                    if (targetContent) {
+                        targetContent.classList.add('active');
+                        console.log('Đang hiển thị tab:', tabId);
                     }
                 });
             });
+            
+            console.log('Khởi tạo tabs hoàn tất');
         }
         
         // Tải thống kê
@@ -467,8 +479,6 @@
                     let totalRooms = 0;
                     let availableRooms = 0;
                     let occupiedRooms = 0;
-                    
-                    console.log('Rooms data:', roomsSnapshot.val());
                     
                     if (roomsSnapshot.exists()) {
                         roomsSnapshot.forEach((roomSnapshot) => {
@@ -498,8 +508,6 @@
                 .then((checkoutsSnapshot) => {
                     let monthlyRevenue = 0;
                     
-                    console.log('Checkouts data:', checkoutsSnapshot.val());
-                    
                     if (checkoutsSnapshot.exists()) {
                         checkoutsSnapshot.forEach((checkoutSnapshot) => {
                             const checkout = checkoutSnapshot.val();
@@ -521,8 +529,6 @@
                 .then((checkoutsSnapshot) => {
                     const checkoutHistory = document.getElementById('checkoutHistory');
                     checkoutHistory.innerHTML = '';
-                    
-                    console.log('Checkout history data:', checkoutsSnapshot.val());
                     
                     if (!checkoutsSnapshot.exists()) {
                         checkoutHistory.innerHTML = '<tr><td colspan="4" style="text-align: center;">Chưa có dữ liệu trả phòng</td></tr>';
