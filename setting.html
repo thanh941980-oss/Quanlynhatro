@@ -192,22 +192,27 @@ function loadBankConfig(){
 }
 
 // --- Rooms ---
+
+// --- Rooms ---
 function loadRooms() {
   database.ref('rooms').once('value').then(snapshot => {
-    const roomList=document.getElementById('roomList');roomList.innerHTML='';
-    if(snapshot.exists()){
-      const table=document.createElement('table');
-      table.innerHTML=`<thead><tr>
+    const roomList = document.getElementById('roomList');
+    roomList.innerHTML = '';
+    
+    if (snapshot.exists()) {
+      const table = document.createElement('table');
+      table.innerHTML = `<thead><tr>
         <th>Số phòng</th><th>Giá phòng</th><th>Diện tích</th><th>Trạng thái</th><th>Thao tác</th>
       </tr></thead><tbody></tbody>`;
-      const tbody=table.querySelector('tbody');
-      snapshot.forEach(child=>{
-        const room=child.val();
-        const row=document.createElement('tr');
-        row.innerHTML=`<td>${room.roomNumber}</td>
-          <td>${room.price.toLocaleString('vi-VN')} VNĐ</td>
-          <td>${room.area} m²</td>
-          <td>${room.status==='available'?'Trống':'Đã thuê'}</td>
+      
+      const tbody = table.querySelector('tbody');
+      snapshot.forEach(child => {
+        const room = child.val();
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${child.key}</td>  <!-- Sử dụng key làm số phòng -->
+          <td>${room.price ? room.price.toLocaleString('vi-VN') : '0'} VNĐ</td>
+          <td>${room.area || '0'} m²</td>
+          <td>${room.status === 'available' ? 'Trống' : 'Đã thuê'}</td>
           <td>
             <button class="btn small-btn edit-room-btn" data-id="${child.key}">Sửa</button>
             <button class="btn small-btn delete-room-btn" data-id="${child.key}">Xóa</button>
@@ -217,7 +222,7 @@ function loadRooms() {
       roomList.appendChild(table);
       attachRoomActions();
     } else {
-      roomList.innerHTML='<p>Chưa có phòng nào.</p>';
+      roomList.innerHTML = '<p>Chưa có phòng nào.</p>';
     }
   });
 }
@@ -248,19 +253,40 @@ function attachRoomActions() {
       if (!snap.exists()) return;
       const room = snap.val();
 
-      const newNumber = prompt("Số phòng:", room.number);
+      const newNumber = prompt("Số phòng:", roomId); // Hiển thị số phòng hiện tại
       if (!newNumber) return;
-      const newPrice = prompt("Giá phòng:", room.price);
+      
+      const newPrice = prompt("Giá phòng:", room.price || '');
       if (!newPrice) return;
-      const newArea = prompt("Diện tích (m²):", room.area);
+      
+      const newArea = prompt("Diện tích (m²):", room.area || '');
       if (!newArea) return;
 
       try {
-        await database.ref('rooms/' + roomId).update({
-          number: newNumber,
-          price: parseInt(newPrice),
-          area: parseInt(newArea)
-        });
+        // Nếu số phòng thay đổi, cần tạo bản ghi mới và xóa bản ghi cũ
+        if (newNumber !== roomId) {
+          // Kiểm tra số phòng mới đã tồn tại chưa
+          const checkSnap = await database.ref('rooms/' + newNumber).once('value');
+          if (checkSnap.exists()) {
+            alert('Số phòng này đã tồn tại!');
+            return;
+          }
+          
+          // Tạo bản ghi mới và xóa bản ghi cũ
+          await database.ref('rooms/' + newNumber).set({
+            price: parseInt(newPrice),
+            area: parseInt(newArea),
+            status: room.status || 'available'
+          });
+          await database.ref('rooms/' + roomId).remove();
+        } else {
+          // Chỉ cập nhật thông tin
+          await database.ref('rooms/' + roomId).update({
+            price: parseInt(newPrice),
+            area: parseInt(newArea)
+          });
+        }
+        
         alert("Đã cập nhật phòng!");
         loadRooms();
       } catch (err) {
@@ -272,44 +298,45 @@ function attachRoomActions() {
 }
 
 document.getElementById('addRoomBtn').addEventListener('click', async () => {
-    const roomNumber = document.getElementById('roomNumber').value.trim();
-    const roomPrice = document.getElementById('roomPrice').value.trim();
-    const roomArea = document.getElementById('roomArea').value.trim();
+  const roomNumber = document.getElementById('roomNumber').value.trim();
+  const roomPrice = document.getElementById('roomPrice').value.trim();
+  const roomArea = document.getElementById('roomArea').value.trim();
 
-    // 1. Kiểm tra các trường nhập liệu có trống không
-    if (!roomNumber || !roomPrice || !roomArea) {
-        alert('Vui lòng nhập đầy đủ Số phòng, Giá phòng và Diện tích.');
-        return;
-    }
+  // Kiểm tra các trường nhập liệu
+  if (!roomNumber || !roomPrice || !roomArea) {
+    alert('Vui lòng nhập đầy đủ Số phòng, Giá phòng và Diện tích.');
+    return;
+  }
 
-    const roomRef = database.ref('rooms/' + roomNumber);
+  // Kiểm tra số phòng đã tồn tại
+  const roomRef = database.ref('rooms/' + roomNumber);
+  const snapshot = await roomRef.once('value');
+  if (snapshot.exists()) {
+    alert('Lỗi: Số phòng này đã tồn tại. Vui lòng chọn số phòng khác.');
+    return;
+  }
 
-    // 2. Kiểm tra xem số phòng đã tồn tại hay chưa
-    const snapshot = await roomRef.once('value');
-    if (snapshot.exists()) {
-        alert('Lỗi: Số phòng này đã tồn tại. Vui lòng chọn số phòng khác.');
-        return;
-    }
-
-    // 3. Thêm phòng mới vào database
-    try {
-        await roomRef.set({
-            price: Number(roomPrice),
-            area: Number(roomArea),
-            status: 'available'
-        });
-        alert('Thêm phòng thành công!');
-        
-        // Xóa dữ liệu trên form sau khi thêm thành công
-        document.getElementById('roomNumber').value = '';
-        document.getElementById('roomPrice').value = '';
-        document.getElementById('roomArea').value = '';
-    } catch (err) {
-        console.error(err);
-        alert('Lỗi khi thêm phòng. Vui lòng thử lại.');
-    }
+  // Thêm phòng mới
+  try {
+    await roomRef.set({
+      price: Number(roomPrice),
+      area: Number(roomArea),
+      status: 'available'
+    });
+    alert('Thêm phòng thành công!');
+    
+    // Xóa form
+    document.getElementById('roomNumber').value = '';
+    document.getElementById('roomPrice').value = '';
+    document.getElementById('roomArea').value = '';
+    
+    // Load lại danh sách
+    loadRooms();
+  } catch (err) {
+    console.error(err);
+    alert('Lỗi khi thêm phòng. Vui lòng thử lại.');
+  }
 });
-
 
 // --- Price config ---
 function loadPriceConfig(){
