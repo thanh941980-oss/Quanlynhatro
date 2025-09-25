@@ -75,47 +75,69 @@
     const auth = firebase.auth();
     const database = firebase.database();
 
+    let currentUser = null;
+
     auth.onAuthStateChanged(user => {
       if (!user) {
         window.location.href = "index.html";
       } else {
+        currentUser = user;
         loadTenants();
+        loadLicenseStatus();
       }
     });
 
     function loadTenants() {
-      database.ref("bookings").on("value", snapshot => {
+      database.ref(`users/${currentUser.uid}/bookings`).on("value", snapshot => {
         const tbody = document.getElementById("tenantList");
         tbody.innerHTML = "";
+        
+        if (!snapshot.exists()) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td colspan="5" style="text-align: center; padding: 20px;">
+              Không có dữ liệu người thuê
+            </td>
+          `;
+          tbody.appendChild(tr);
+          return;
+        }
         
         snapshot.forEach(child => {
           const data = child.val();
           const bookingId = child.key;
           
-          // Lấy số phòng từ rooms
-          database.ref("rooms/" + data.roomId).once("value").then(roomSnap => {
-            const roomData = roomSnap.val();
-            const roomNumber = roomData ? roomData.number : data.roomId; // fallback nếu không có
-            
-            const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td>${roomNumber}</td>
-              <td>${data.customerName}</td>
-              <td>${data.idNumber}</td>
-              <td>${new Date(data.bookingDate).toLocaleString("vi-VN")}</td>
-              <td class="actions-cell">
-                <button class="btn delete-btn" onclick="deleteTenant('${bookingId}')">Xóa</button>
-              </td>
-            `;
-            tbody.appendChild(tr);
-          });
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${data.roomId}</td>
+            <td>${data.customerName}</td>
+            <td>${data.idNumber}</td>
+            <td>${new Date(data.bookingDate).toLocaleString("vi-VN")}</td>
+            <td class="actions-cell">
+              <button class="btn delete-btn" onclick="deleteTenant('${bookingId}')">Xóa</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
         });
       });
     }
 
     function deleteTenant(bookingId) {
       if (confirm("Bạn có chắc chắn muốn xóa người thuê này?")) {
-        database.ref("bookings/" + bookingId).remove()
+        // Cập nhật trạng thái phòng về available trước khi xóa booking
+        database.ref(`users/${currentUser.uid}/bookings/${bookingId}`).once('value')
+          .then(snapshot => {
+            const bookingData = snapshot.val();
+            if (bookingData) {
+              // Cập nhật phòng về trạng thái trống
+              return database.ref(`users/${currentUser.uid}/rooms/${bookingData.roomId}`).update({
+                status: 'available'
+              }).then(() => {
+                // Xóa booking
+                return database.ref(`users/${currentUser.uid}/bookings/${bookingId}`).remove();
+              });
+            }
+          })
           .then(() => {
             alert("Đã xóa người thuê thành công!");
           })
@@ -124,6 +146,16 @@
             alert("Có lỗi xảy ra khi xóa người thuê. Vui lòng thử lại.");
           });
       }
+    }
+
+    function loadLicenseStatus(){
+      database.ref(`users/${currentUser.uid}/license`).on('value',snap=>{
+        if(snap.exists()&&snap.val().licensed){
+          document.getElementById('licenseStatus').textContent='Đã cấp bản quyền';
+        }else{
+          document.getElementById('licenseStatus').textContent='Miễn phí';
+        }
+      });
     }
 
     document.getElementById("logoutBtn").addEventListener("click", () => {
@@ -138,17 +170,7 @@
   </div>
 </footer>
 <script>
-  (function(){
-    document.getElementById('copyrightYear').textContent = new Date().getFullYear();
-    if (typeof firebase !== 'undefined') {
-      try {
-        firebase.database().ref('config/license').once('value').then(snap => {
-          const l = snap.exists() ? snap.val() : { licensed: false };
-          document.getElementById('licenseStatus').textContent = l.licensed ? 'Đã cấp bản quyền' : 'Miễn phí';
-        });
-      } catch(e){}
-    }
-  })();
+  document.getElementById('copyrightYear').textContent = new Date().getFullYear();
 </script>
 
 </body>
