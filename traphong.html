@@ -151,10 +151,10 @@ function loadPriceConfig(){
   database.ref(`users/${currentUser.uid}/config/prices`).once('value').then(s=>{
     if(s.exists()){
       const c=s.val();
-      document.getElementById('electricityPrice').value=c.electricity||3500;
-      document.getElementById('waterPrice').value=c.water||20000;
-      document.getElementById('wifiCost').value=c.wifi||50000;
-      document.getElementById('garbageCost').value=c.garbage||20000;
+      document.getElementById('electricityPrice').value=c.electricity??3500;
+      document.getElementById('waterPrice').value=c.water??20000;
+      document.getElementById('wifiCost').value=c.wifi??50000;
+      document.getElementById('garbageCost').value=c.garbage??20000;
     }
   });
 }
