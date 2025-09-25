@@ -146,15 +146,20 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const database = firebase.database();
 
+// Biến lưu thông tin user hiện tại
+let currentUser = null;
+
 // --- Auth ---
 auth.onAuthStateChanged(user => {
   if (!user) {
     window.location.href='index.html';
   } else {
-    document.getElementById('userEmail').value=user.email;
+    currentUser = user;
+    document.getElementById('userEmail').value = user.email;
     loadBankConfig();
     loadRooms();
     loadPriceConfig();
+    loadLicenseStatus(); // Tải trạng thái bản quyền của user
   }
 });
 
@@ -175,12 +180,14 @@ document.getElementById('saveBankConfigBtn').addEventListener('click',()=>{
   const accountName=document.getElementById('accountName').value;
   const bankContent=document.getElementById('bankContent').value;
   if(!bankName||!bankAccount){alert("Vui lòng nhập đầy đủ");return;}
-  database.ref('config/bank').set({bankName,bankAccount,accountName,bankContent})
+  
+  // Lưu theo user ID
+  database.ref(`users/${currentUser.uid}/config/bank`).set({bankName,bankAccount,accountName,bankContent})
     .then(()=>alert("Lưu thành công"));
 });
 
 function loadBankConfig(){
-  database.ref('config/bank').once('value').then(snap=>{
+  database.ref(`users/${currentUser.uid}/config/bank`).once('value').then(snap=>{
     if(snap.exists()){
       const d=snap.val();
       document.getElementById('bankName').value=d.bankName;
@@ -192,10 +199,9 @@ function loadBankConfig(){
 }
 
 // --- Rooms ---
-
-// --- Rooms ---
 function loadRooms() {
-  database.ref('rooms').once('value').then(snapshot => {
+  // Load phòng theo user ID
+  database.ref(`users/${currentUser.uid}/rooms`).once('value').then(snapshot => {
     const roomList = document.getElementById('roomList');
     roomList.innerHTML = '';
     
@@ -209,7 +215,7 @@ function loadRooms() {
       snapshot.forEach(child => {
         const room = child.val();
         const row = document.createElement('tr');
-        row.innerHTML = `<td>${child.key}</td>  <!-- Sử dụng key làm số phòng -->
+        row.innerHTML = `<td>${child.key}</td>
           <td>${room.price ? room.price.toLocaleString('vi-VN') : '0'} VNĐ</td>
           <td>${room.area || '0'} m²</td>
           <td>${room.status === 'available' ? 'Trống' : 'Đã thuê'}</td>
@@ -234,7 +240,7 @@ function attachRoomActions() {
       const roomId = btn.dataset.id;
       if (confirm("Bạn có chắc muốn xóa phòng này?")) {
         try {
-          await database.ref('rooms/' + roomId).remove();
+          await database.ref(`users/${currentUser.uid}/rooms/` + roomId).remove();
           alert("Đã xóa phòng!");
           loadRooms();
         } catch (err) {
@@ -249,11 +255,11 @@ function attachRoomActions() {
   document.querySelectorAll('.edit-room-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const roomId = btn.dataset.id;
-      const snap = await database.ref('rooms/' + roomId).once('value');
+      const snap = await database.ref(`users/${currentUser.uid}/rooms/` + roomId).once('value');
       if (!snap.exists()) return;
       const room = snap.val();
 
-      const newNumber = prompt("Số phòng:", roomId); // Hiển thị số phòng hiện tại
+      const newNumber = prompt("Số phòng:", roomId);
       if (!newNumber) return;
       
       const newPrice = prompt("Giá phòng:", room.price || '');
@@ -263,25 +269,24 @@ function attachRoomActions() {
       if (!newArea) return;
 
       try {
-        // Nếu số phòng thay đổi, cần tạo bản ghi mới và xóa bản ghi cũ
         if (newNumber !== roomId) {
           // Kiểm tra số phòng mới đã tồn tại chưa
-          const checkSnap = await database.ref('rooms/' + newNumber).once('value');
+          const checkSnap = await database.ref(`users/${currentUser.uid}/rooms/` + newNumber).once('value');
           if (checkSnap.exists()) {
             alert('Số phòng này đã tồn tại!');
             return;
           }
           
           // Tạo bản ghi mới và xóa bản ghi cũ
-          await database.ref('rooms/' + newNumber).set({
+          await database.ref(`users/${currentUser.uid}/rooms/` + newNumber).set({
             price: parseInt(newPrice),
             area: parseInt(newArea),
             status: room.status || 'available'
           });
-          await database.ref('rooms/' + roomId).remove();
+          await database.ref(`users/${currentUser.uid}/rooms/` + roomId).remove();
         } else {
           // Chỉ cập nhật thông tin
-          await database.ref('rooms/' + roomId).update({
+          await database.ref(`users/${currentUser.uid}/rooms/` + roomId).update({
             price: parseInt(newPrice),
             area: parseInt(newArea)
           });
@@ -302,14 +307,27 @@ document.getElementById('addRoomBtn').addEventListener('click', async () => {
   const roomPrice = document.getElementById('roomPrice').value.trim();
   const roomArea = document.getElementById('roomArea').value.trim();
 
-  // Kiểm tra các trường nhập liệu
   if (!roomNumber || !roomPrice || !roomArea) {
     alert('Vui lòng nhập đầy đủ Số phòng, Giá phòng và Diện tích.');
     return;
   }
 
+  // Kiểm tra giới hạn phòng (nếu chưa kích hoạt bản quyền)
+  const licenseSnap = await database.ref(`users/${currentUser.uid}/license`).once('value');
+  const isLicensed = licenseSnap.exists() && licenseSnap.val().licensed;
+  
+  if (!isLicensed) {
+    const roomsSnap = await database.ref(`users/${currentUser.uid}/rooms`).once('value');
+    const roomCount = roomsSnap.exists() ? Object.keys(roomsSnap.val()).length : 0;
+    
+    if (roomCount >= 5) {
+      alert('Bản miễn phí chỉ cho phép tối đa 5 phòng. Vui lòng kích hoạt bản quyền để thêm nhiều phòng hơn.');
+      return;
+    }
+  }
+
   // Kiểm tra số phòng đã tồn tại
-  const roomRef = database.ref('rooms/' + roomNumber);
+  const roomRef = database.ref(`users/${currentUser.uid}/rooms/` + roomNumber);
   const snapshot = await roomRef.once('value');
   if (snapshot.exists()) {
     alert('Lỗi: Số phòng này đã tồn tại. Vui lòng chọn số phòng khác.');
@@ -340,7 +358,7 @@ document.getElementById('addRoomBtn').addEventListener('click', async () => {
 
 // --- Price config ---
 function loadPriceConfig(){
-  database.ref('config/prices').once('value').then(snap=>{
+  database.ref(`users/${currentUser.uid}/config/prices`).once('value').then(snap=>{
     if(snap.exists()){
       const c=snap.val();
       document.getElementById('defaultElectricityPrice').value=c.electricity||3500;
@@ -356,7 +374,7 @@ document.getElementById('savePriceConfigBtn').addEventListener('click',()=>{
   const water=parseInt(document.getElementById('defaultWaterPrice').value)||0;
   const wifi=parseInt(document.getElementById('defaultWifiPrice').value)||0;
   const garbage=parseInt(document.getElementById('defaultGarbagePrice').value)||0;
-  database.ref('config/prices').set({electricity,water,wifi,garbage})
+  database.ref(`users/${currentUser.uid}/config/prices`).set({electricity,water,wifi,garbage})
     .then(()=>alert('Đã lưu cấu hình giá'));
 });
 
@@ -383,7 +401,13 @@ document.getElementById('activateLicenseBtn').addEventListener('click', async ()
   try{
     const VALID_KEYS=['VIP123','PRO999','NHATRO2025'];
     if(VALID_KEYS.includes(key)){
-      await database.ref('config/license').set({licensed:true,key:key,activatedAt:new Date().toISOString()});
+      // Lưu bản quyền theo user ID
+      await database.ref(`users/${currentUser.uid}/license`).set({
+        licensed:true,
+        key:key,
+        activatedAt:new Date().toISOString(),
+        activatedBy:currentUser.email
+      });
       document.getElementById('licenseMsg').textContent='✅ Đã kích hoạt bản quyền thành công!';
       document.getElementById('licenseMsg').style.color='green';
       document.getElementById('licenseStatus').textContent='Đã cấp bản quyền';
@@ -394,13 +418,16 @@ document.getElementById('activateLicenseBtn').addEventListener('click', async ()
   }catch(err){console.error(err);alert('Lỗi khi kích hoạt bản quyền');}
 });
 
-database.ref('config/license').on('value',snap=>{
-  if(snap.exists()&&snap.val().licensed){
-    document.getElementById('licenseStatus').textContent='Đã cấp bản quyền';
-  }else{
-    document.getElementById('licenseStatus').textContent='Miễn phí';
-  }
-});
+// Load trạng thái bản quyền
+function loadLicenseStatus(){
+  database.ref(`users/${currentUser.uid}/license`).on('value',snap=>{
+    if(snap.exists()&&snap.val().licensed){
+      document.getElementById('licenseStatus').textContent='Đã cấp bản quyền';
+    }else{
+      document.getElementById('licenseStatus').textContent='Miễn phí';
+    }
+  });
+}
 
 // --- Misc ---
 document.getElementById('logoutBtn').addEventListener('click',()=>auth.signOut());
