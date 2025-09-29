@@ -268,36 +268,17 @@
         document.getElementById('loginBtn').addEventListener('click', () => {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
-        
+
             if (!email || !password) {
                 document.getElementById('loginError').textContent = 'Vui lòng nhập đầy đủ thông tin!';
                 return;
             }
-        
+
             auth.signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    const user = userCredential.user;
-                    
-                    // ✅ THÊM IMPORT FIREBASE DATABASE
-                    const database = firebase.database();
-                    
-                    // Cập nhật thời gian đăng nhập cuối
-                    const userRef = database.ref('users/' + user.uid);
-                    userRef.update({
-                        lastLogin: new Date().toISOString(),
-                        email: user.email // Thêm email để dễ quản lý
-                    }).then(() => {
-                        console.log("Đã cập nhật thời gian đăng nhập cuối");
-                        // Chuyển hướng sau khi cập nhật thành công
-                        window.location.href = 'dashboard.html';
-                    }).catch(error => {
-                        console.error("Lỗi cập nhật lastLogin:", error);
-                        // Vẫn chuyển hướng ngay cả khi có lỗi cập nhật lastLogin
-                        window.location.href = 'dashboard.html';
-                    });
+                .then(() => {
+                    window.location.href = 'dashboard.html';
                 })
-                .catch((error) => {
-                    console.error("Lỗi đăng nhập:", error);
+                .catch(() => {
                     document.getElementById('loginError').textContent = 'Email hoặc mật khẩu không đúng!';
                 });
         });
