@@ -35,6 +35,8 @@
             color: #2c3e50;
         }
         .form-group {
+            /* Đảm bảo có dòng này để định vị con mắt */
+            position: relative;
             margin-bottom: 1rem;
         }
         .form-group label {
@@ -75,6 +77,18 @@
             color: #c62828;
             font-size: 0.9rem;
             margin-top: 0.5rem;
+        }
+
+        /* CSS cho biểu tượng con mắt */
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(20%);
+            cursor: pointer;
+            user-select: none;
+            color: #999;
+            font-size: 1.2rem;
         }
         
         /* CSS cho thông báo cập nhật - ÁP DỤNG CHO CẢ PC VÀ MOBILE */
@@ -184,7 +198,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 </head>
 <body>
-    <!-- Thông báo cập nhật - ĐẶT NGOÀI auth-container để hiển thị độc lập -->
     <div class="update-notification" id="updateNotification">
         <div class="update-header">
             <h3>Cập nhật mới</h3>
@@ -200,7 +213,6 @@
     </div>
 
     <div class="auth-container">
-        <!-- Form Đăng nhập -->
         <div class="auth-form" id="loginForm">
             <h2>Đăng nhập hệ thống</h2>
             <div class="form-group">
@@ -210,13 +222,13 @@
             <div class="form-group">
                 <label for="loginPassword">Mật khẩu</label>
                 <input type="password" id="loginPassword" placeholder="Nhập mật khẩu">
+                <span class="password-toggle" onclick="togglePassword('loginPassword', this)">👁️</span>
             </div>
             <button id="loginBtn" class="btn">Đăng nhập</button>
             <div id="loginError" class="error"></div>
             <div class="toggle-link" onclick="showRegister()">Chưa có tài khoản? Đăng ký</div>
         </div>
 
-        <!-- Form Đăng ký -->
         <div class="auth-form" id="registerForm" style="display:none;">
             <h2>Đăng ký tài khoản</h2>
             <div class="form-group">
@@ -226,6 +238,7 @@
             <div class="form-group">
                 <label for="registerPassword">Mật khẩu</label>
                 <input type="password" id="registerPassword" placeholder="Mật khẩu (6 chữ số)">
+                <span class="password-toggle" onclick="togglePassword('registerPassword', this)">👁️</span>
             </div>
             <button id="registerBtn" class="btn">Đăng ký</button>
             <div id="registerError" class="error"></div>
@@ -263,6 +276,20 @@
         document.getElementById('closeUpdateBtn').addEventListener('click', function() {
             document.getElementById('updateNotification').style.display = 'none';
         });
+
+        // Hàm ẩn/hiện mật khẩu
+        function togglePassword(id, element) {
+            const passwordInput = document.getElementById(id);
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+
+            // Chuyển đổi biểu tượng
+            if (type === 'password') {
+                element.textContent = '👁️';
+            } else {
+                element.textContent = '🙈';
+            }
+        }
 
         // Đăng nhập
         document.getElementById('loginBtn').addEventListener('click', () => {
