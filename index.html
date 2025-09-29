@@ -276,23 +276,28 @@
         
             auth.signInWithEmailAndPassword(email, password)
                 .then((userCredential) => {
-                    // ✅ THÊM ĐOẠN NÀY VÀO ĐÂY
                     const user = userCredential.user;
                     
+                    // ✅ THÊM IMPORT FIREBASE DATABASE
+                    const database = firebase.database();
+                    
                     // Cập nhật thời gian đăng nhập cuối
-                    const userRef = firebase.database().ref('users/' + user.uid);
+                    const userRef = database.ref('users/' + user.uid);
                     userRef.update({
-                        lastLogin: new Date().toISOString()
+                        lastLogin: new Date().toISOString(),
+                        email: user.email // Thêm email để dễ quản lý
                     }).then(() => {
                         console.log("Đã cập nhật thời gian đăng nhập cuối");
+                        // Chuyển hướng sau khi cập nhật thành công
+                        window.location.href = 'dashboard.html';
                     }).catch(error => {
                         console.error("Lỗi cập nhật lastLogin:", error);
+                        // Vẫn chuyển hướng ngay cả khi có lỗi cập nhật lastLogin
+                        window.location.href = 'dashboard.html';
                     });
-                    
-                    // Chuyển hướng sau khi cập nhật
-                    window.location.href = 'dashboard.html';
                 })
-                .catch(() => {
+                .catch((error) => {
+                    console.error("Lỗi đăng nhập:", error);
                     document.getElementById('loginError').textContent = 'Email hoặc mật khẩu không đúng!';
                 });
         });
