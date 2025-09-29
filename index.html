@@ -268,21 +268,34 @@
         document.getElementById('loginBtn').addEventListener('click', () => {
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
-
+        
             if (!email || !password) {
                 document.getElementById('loginError').textContent = 'Vui lòng nhập đầy đủ thông tin!';
                 return;
             }
-
+        
             auth.signInWithEmailAndPassword(email, password)
-                .then(() => {
+                .then((userCredential) => {
+                    // ✅ THÊM ĐOẠN NÀY VÀO ĐÂY
+                    const user = userCredential.user;
+                    
+                    // Cập nhật thời gian đăng nhập cuối
+                    const userRef = firebase.database().ref('users/' + user.uid);
+                    userRef.update({
+                        lastLogin: new Date().toISOString()
+                    }).then(() => {
+                        console.log("Đã cập nhật thời gian đăng nhập cuối");
+                    }).catch(error => {
+                        console.error("Lỗi cập nhật lastLogin:", error);
+                    });
+                    
+                    // Chuyển hướng sau khi cập nhật
                     window.location.href = 'dashboard.html';
                 })
                 .catch(() => {
                     document.getElementById('loginError').textContent = 'Email hoặc mật khẩu không đúng!';
                 });
         });
-
         // Đăng ký
         document.getElementById('registerBtn').addEventListener('click', () => {
             const email = document.getElementById('registerEmail').value;
