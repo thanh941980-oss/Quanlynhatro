@@ -85,16 +85,6 @@
         border-radius: 4px;
         font-size: 0.9rem;
     }
-
-    /* Thêm style cho phần hiển thị tên file và nút bấm */
-    .file-input-group {
-        display: flex;
-        flex-direction: column;
-    }
-    .file-input-group input[type="text"] {
-        flex-grow: 1;
-        margin-bottom: 5px; /* Khoảng cách với nút bấm */
-    }
     
     .form-row {
         display: flex;
@@ -121,16 +111,6 @@
     
     .btn:hover {
         background-color: #2980b9;
-    }
-
-    /* Style riêng cho nút thêm ảnh */
-    .btn-upload {
-        background-color: #27ae60;
-        padding: 0.5rem 0.8rem;
-    }
-
-    .btn-upload:hover {
-        background-color: #2ecc71;
     }
     
     .back-btn {
@@ -248,22 +228,7 @@
                     <input type="number" id="roomPrice" placeholder="Tiền phòng">
                 </div>
             </div>
-
-            <div class="form-row">
-                <div class="form-group file-input-group">
-                    <label for="cccdFrontUpload">CCCD Mặt trước</label>
-                    <input type="file" id="cccdFrontUpload" accept="image/*" style="display:none;">
-                    <input type="text" id="cccdFrontFileName" placeholder="Chưa chọn file ảnh mặt trước..." readonly>
-                    <button type="button" class="btn btn-upload" onclick="document.getElementById('cccdFrontUpload').click();">Thêm ảnh mặt trước</button>
-                </div>
-                
-                <div class="form-group file-input-group">
-                    <label for="cccdBackUpload">CCCD Mặt sau</label>
-                    <input type="file" id="cccdBackUpload" accept="image/*" style="display:none;">
-                    <input type="text" id="cccdBackFileName" placeholder="Chưa chọn file ảnh mặt sau..." readonly>
-                    <button type="button" class="btn btn-upload" onclick="document.getElementById('cccdBackUpload').click();">Thêm ảnh mặt sau</button>
-                </div>
-            </div>
+            
             <div class="form-row">
                 <div class="form-group">
                     <label for="initialElectricity">Chỉ số điện lúc đặt phòng</label>
@@ -380,62 +345,52 @@
         
         // Xử lý lưu thông tin đặt phòng - FIXED
         document.getElementById('saveBtn').addEventListener('click', async () => {
-            // Thu thập dữ liệu từ các trường input
-            const roomId = document.getElementById('roomSelect').value;
-            const customerName = document.getElementById('customerName').value;
-            const idNumber = document.getElementById('idNumber').value;
-            const roomPrice = document.getElementById('roomPrice').value;
-            const initialElectricity = document.getElementById('initialElectricity').value;
-            const initialWater = document.getElementById('initialWater').value;
-            const notes = document.getElementById('notes').value;
-            const sharedCustomers = document.getElementById('sharedCustomers').value.split(',').map(item => item.trim());
-            
-            // Lấy thông tin file CCCD
-            const cccdFrontFile = document.getElementById('cccdFrontUpload').files[0];
-            const cccdBackFile = document.getElementById('cccdBackUpload').files[0];
+    // Thu thập dữ liệu từ các trường input
+    const roomId = document.getElementById('roomSelect').value;
+    const customerName = document.getElementById('customerName').value;
+    const idNumber = document.getElementById('idNumber').value;
+    const roomPrice = document.getElementById('roomPrice').value;
+    const initialElectricity = document.getElementById('initialElectricity').value;
+    const initialWater = document.getElementById('initialWater').value;
+    const notes = document.getElementById('notes').value;
+    const sharedCustomers = document.getElementById('sharedCustomers').value.split(',').map(item => item.trim());
 
-            // Kiểm tra các trường bắt buộc
-            if (!roomId || !customerName || !idNumber || !roomPrice || !initialElectricity || !initialWater) {
-                alert('Vui lòng điền đầy đủ thông tin bắt buộc (Phòng, Tên, CCCD/CMND, Tiền phòng, Chỉ số Điện/Nước)!');
-                return;
-            }
+    // Kiểm tra các trường bắt buộc
+    if (!roomId || !customerName || !idNumber || !roomPrice || !initialElectricity || !initialWater) {
+        alert('Vui lòng điền đầy đủ thông tin!');
+        return;
+    }
 
-            // *LƯU Ý: Nếu cần upload ảnh lên Firebase Storage, bạn phải thêm thư viện firebase-storage-compat.js và logic upload ở đây.
-            // Hiện tại, logic chỉ lưu tên file (nếu có) vào Realtime Database.
+    // Tạo đối tượng dữ liệu
+    const bookingData = {
+        roomId: roomId,
+        customerName: customerName,
+        idNumber: idNumber,
+        roomPrice: parseInt(roomPrice),
+        initialElectricity: parseInt(initialElectricity),
+        initialWater: parseInt(initialWater),
+        sharedCustomers: sharedCustomers,
+        notes: notes,
+        bookingDate: new Date().toISOString(),
+        status: 'occupied'
+    };
 
-            // Tạo đối tượng dữ liệu
-            const bookingData = {
-                roomId: roomId,
-                customerName: customerName,
-                idNumber: idNumber,
-                roomPrice: parseInt(roomPrice),
-                initialElectricity: parseInt(initialElectricity),
-                initialWater: parseInt(initialWater),
-                sharedCustomers: sharedCustomers,
-                notes: notes,
-                // Thêm tên file CCCD vào dữ liệu booking
-                cccdFrontFileName: cccdFrontFile ? cccdFrontFile.name : null,
-                cccdBackFileName: cccdBackFile ? cccdBackFile.name : null,
-                bookingDate: new Date().toISOString(),
-                status: 'occupied'
-            };
-
-            try {
-                // Cập nhật trạng thái phòng thành 'occupied'
-                await database.ref(`users/${currentUser.uid}/rooms/${roomId}`).update({
-                    status: 'occupied'
-                });
-
-                // Lưu thông tin đặt phòng vào Firebase
-                await database.ref(`users/${currentUser.uid}/bookings`).push(bookingData);
-
-                alert('Đặt phòng thành công!');
-                window.location.reload();
-            } catch (error) {
-                console.error('Lỗi khi đặt phòng:', error);
-                alert('Có lỗi xảy ra khi đặt phòng.');
-            }
+    try {
+        // Cập nhật trạng thái phòng thành 'occupied'
+        await database.ref(`users/${currentUser.uid}/rooms/${roomId}`).update({
+            status: 'occupied'
         });
+
+        // Lưu thông tin đặt phòng vào Firebase
+        await database.ref(`users/${currentUser.uid}/bookings`).push(bookingData);
+
+        alert('Đặt phòng thành công!');
+        window.location.reload();
+    } catch (error) {
+        console.error('Lỗi khi đặt phòng:', error);
+        alert('Có lỗi xảy ra khi đặt phòng.');
+    }
+});
         
         // Xử lý đăng xuất
         document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -458,20 +413,6 @@
                 }
             });
         }
-
-        // --- Bổ sung Javascript để hiển thị tên file ---
-        // Xử lý hiển thị tên file khi chọn CCCD mặt trước
-        document.getElementById('cccdFrontUpload').addEventListener('change', function() {
-            const fileName = this.files.length > 0 ? this.files[0].name : '';
-            document.getElementById('cccdFrontFileName').value = fileName;
-        });
-
-        // Xử lý hiển thị tên file khi chọn CCCD mặt sau
-        document.getElementById('cccdBackUpload').addEventListener('change', function() {
-            const fileName = this.files.length > 0 ? this.files[0].name : '';
-            document.getElementById('cccdBackFileName').value = fileName;
-        });
-        // ---------------------------------------------
     </script>
 
 <footer style="text-align:center; padding:10px; font-size:0.9rem;">
