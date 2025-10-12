@@ -175,20 +175,6 @@
         text-align: center;
     }
     
-    .upload-status {
-        font-size: 0.8rem;
-        margin-top: 5px;
-        text-align: center;
-    }
-    
-    .upload-status.success {
-        color: #27ae60;
-    }
-    
-    .upload-status.error {
-        color: #e74c3c;
-    }
-    
     @media (max-width: 768px) {
         header {
             padding: 0.6rem 0.8rem;
@@ -297,7 +283,6 @@
                         <input type="file" id="frontIdCard" accept="image/*" style="margin-bottom: 10px;">
                         <button id="uploadFrontBtn" class="btn">Tải lên ảnh mặt trước</button>
                         <div id="frontPreview" class="upload-preview"></div>
-                        <div id="frontStatus" class="upload-status"></div>
                     </div>
                 </div>
                 
@@ -307,7 +292,6 @@
                         <input type="file" id="backIdCard" accept="image/*" style="margin-bottom: 10px;">
                         <button id="uploadBackBtn" class="btn">Tải lên ảnh mặt sau</button>
                         <div id="backPreview" class="upload-preview"></div>
-                        <div id="backStatus" class="upload-status"></div>
                     </div>
                 </div>
             </div>
@@ -444,12 +428,6 @@
                     return;
                 }
                 
-                // Kiểm tra kích thước file (tối đa 5MB)
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('Kích thước ảnh không được vượt quá 5MB');
-                    return;
-                }
-                
                 uploadIdCardImage(file, 'front');
             });
             
@@ -463,65 +441,8 @@
                     return;
                 }
                 
-                // Kiểm tra kích thước file (tối đa 5MB)
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('Kích thước ảnh không được vượt quá 5MB');
-                    return;
-                }
-                
                 uploadIdCardImage(file, 'back');
             });
-            
-            // Hiển thị preview ngay khi chọn file
-            document.getElementById('frontIdCard').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    showLocalPreview(file, 'front');
-                }
-            });
-            
-            document.getElementById('backIdCard').addEventListener('change', function(e) {
-                const file = e.target.files[0];
-                if (file) {
-                    showLocalPreview(file, 'back');
-                }
-            });
-        }
-        
-        // Hiển thị preview ảnh từ local (trước khi upload)
-        function showLocalPreview(file, side) {
-            const previewDiv = side === 'front' ? document.getElementById('frontPreview') : document.getElementById('backPreview');
-            const statusDiv = side === 'front' ? document.getElementById('frontStatus') : document.getElementById('backStatus');
-            
-            // Xóa nội dung cũ
-            previewDiv.innerHTML = '';
-            statusDiv.innerHTML = '';
-            statusDiv.className = 'upload-status';
-            
-            // Tạo URL object để hiển thị preview
-            const objectUrl = URL.createObjectURL(file);
-            
-            // Tạo và thêm ảnh preview
-            const img = document.createElement('img');
-            img.src = objectUrl;
-            img.alt = `CCCD mặt ${side === 'front' ? 'trước' : 'sau'}`;
-            img.style.maxWidth = '100%';
-            img.style.maxHeight = '150px';
-            img.style.border = '1px solid #ddd';
-            img.style.borderRadius = '4px';
-            img.style.marginBottom = '5px';
-            
-            // Tạo và thêm tên file
-            const fileName = document.createElement('div');
-            fileName.className = 'file-name';
-            fileName.textContent = file.name;
-            
-            previewDiv.appendChild(img);
-            previewDiv.appendChild(fileName);
-            
-            // Hiển thị thông báo chờ upload
-            statusDiv.textContent = 'Chưa upload - Vui lòng nhấn nút "Tải lên"';
-            statusDiv.className = 'upload-status';
         }
         
         // Upload ảnh CCCD lên Firebase Storage
@@ -531,64 +452,66 @@
             
             // Hiển thị thông báo đang upload
             const uploadBtn = side === 'front' ? document.getElementById('uploadFrontBtn') : document.getElementById('uploadBackBtn');
-            const statusDiv = side === 'front' ? document.getElementById('frontStatus') : document.getElementById('backStatus');
             const originalText = uploadBtn.textContent;
-            
             uploadBtn.textContent = 'Đang tải lên...';
             uploadBtn.disabled = true;
-            statusDiv.textContent = 'Đang upload...';
-            statusDiv.className = 'upload-status';
             
             // Upload file
-            const uploadTask = storageRef.put(file);
-            
-            uploadTask.on('state_changed',
-                (snapshot) => {
-                    // Theo dõi tiến trình upload
-                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                    statusDiv.textContent = `Đang upload: ${Math.round(progress)}%`;
-                },
-                (error) => {
-                    // Xử lý lỗi
-                    console.error('Lỗi khi upload ảnh:', error);
-                    statusDiv.textContent = 'Upload thất bại: ' + error.message;
-                    statusDiv.className = 'upload-status error';
+            storageRef.put(file)
+                .then((snapshot) => {
+                    console.log('Upload thành công:', snapshot);
+                    
+                    // Lấy URL download
+                    return snapshot.ref.getDownloadURL();
+                })
+                .then((downloadURL) => {
+                    console.log('URL download:', downloadURL);
+                    
+                    // Lưu URL vào biến tương ứng
+                    if (side === 'front') {
+                        frontIdCardUrl = downloadURL;
+                    } else {
+                        backIdCardUrl = downloadURL;
+                    }
+                    
+                    // Hiển thị preview
+                    showImagePreview(file, downloadURL, side);
                     
                     // Khôi phục nút
                     uploadBtn.textContent = originalText;
                     uploadBtn.disabled = false;
-                },
-                () => {
-                    // Upload thành công
-                    uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                        console.log('URL download:', downloadURL);
-                        
-                        // Lưu URL vào biến tương ứng
-                        if (side === 'front') {
-                            frontIdCardUrl = downloadURL;
-                        } else {
-                            backIdCardUrl = downloadURL;
-                        }
-                        
-                        // Cập nhật preview với URL từ Firebase
-                        const previewDiv = side === 'front' ? document.getElementById('frontPreview') : document.getElementById('backPreview');
-                        const img = previewDiv.querySelector('img');
-                        if (img) {
-                            img.src = downloadURL;
-                        }
-                        
-                        // Hiển thị thông báo thành công
-                        statusDiv.textContent = 'Upload thành công!';
-                        statusDiv.className = 'upload-status success';
-                        
-                        // Khôi phục nút
-                        uploadBtn.textContent = originalText;
-                        uploadBtn.disabled = false;
-                        
-                        console.log(`Upload ảnh mặt ${side === 'front' ? 'trước' : 'sau'} thành công:`, downloadURL);
-                    });
-                }
-            );
+                    
+                    alert(`Tải lên ảnh mặt ${side === 'front' ? 'trước' : 'sau'} thành công!`);
+                })
+                .catch((error) => {
+                    console.error('Lỗi khi upload ảnh:', error);
+                    alert('Có lỗi xảy ra khi tải lên ảnh');
+                    
+                    // Khôi phục nút
+                    uploadBtn.textContent = originalText;
+                    uploadBtn.disabled = false;
+                });
+        }
+        
+        // Hiển thị preview ảnh đã upload
+        function showImagePreview(file, url, side) {
+            const previewDiv = side === 'front' ? document.getElementById('frontPreview') : document.getElementById('backPreview');
+            
+            // Xóa nội dung cũ
+            previewDiv.innerHTML = '';
+            
+            // Tạo và thêm ảnh preview
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = `CCCD mặt ${side === 'front' ? 'trước' : 'sau'}`;
+            
+            // Tạo và thêm tên file
+            const fileName = document.createElement('div');
+            fileName.className = 'file-name';
+            fileName.textContent = file.name;
+            
+            previewDiv.appendChild(img);
+            previewDiv.appendChild(fileName);
         }
         
         // Xử lý lưu thông tin đặt phòng - FIXED
