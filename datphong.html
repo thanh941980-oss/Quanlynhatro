@@ -122,109 +122,144 @@ const firebaseConfig = {
   authDomain:"quan-ly-nha-tro-2a4bf.firebaseapp.com",
   databaseURL:"https://quan-ly-nha-tro-2a4bf-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId:"quan-ly-nha-tro-2a4bf",
-  storageBucket:"quan-ly-nha-tro-2a4bf.firebasestorage.app",
+  storageBucket:"quan-ly-nha-tro-2a4bf.appspot.com",   // ⚠️ sửa lại .app thành .appspot.com
   messagingSenderId:"490747665921",
   appId:"1:490747665921:web:48b0e2bad3a0f894c22a00"
 };
-firebase.initializeApp(firebaseConfig);
-const auth=firebase.auth();
-const database=firebase.database();
-const storage=firebase.storage();
-let currentUser=null;
 
-auth.onAuthStateChanged(user=>{
-  if(!user) window.location.href='index.html';
-  else {currentUser=user;loadAvailableRooms();}
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const database = firebase.database();
+const storage = firebase.storage();
+
+let currentUser = null;
+
+auth.onAuthStateChanged(user => {
+  if (!user) window.location.href = 'index.html';
+  else {
+    currentUser = user;
+    loadAvailableRooms();
+  }
 });
 
-function loadAvailableRooms(){
-  const ref=database.ref(`users/${currentUser.uid}/rooms`);
-  ref.once('value').then(snap=>{
-    const roomSelect=document.getElementById('roomSelect');
-    roomSelect.innerHTML='<option value="">-- Chọn phòng --</option>';
-    if(snap.exists()){
-      snap.forEach(c=>{
-        const room=c.val();const num=c.key;
-        if(room.status==='available'){
-          const op=document.createElement('option');
-          op.value=num;op.textContent=`Phòng ${num} - ${room.price||0} VNĐ`;
-          op.setAttribute("data-price",room.price||0);
+function loadAvailableRooms() {
+  const ref = database.ref(`users/${currentUser.uid}/rooms`);
+  ref.once('value').then(snap => {
+    const roomSelect = document.getElementById('roomSelect');
+    roomSelect.innerHTML = '<option value="">-- Chọn phòng --</option>';
+    if (snap.exists()) {
+      snap.forEach(c => {
+        const room = c.val(); const num = c.key;
+        if (room.status === 'available') {
+          const op = document.createElement('option');
+          op.value = num;
+          op.textContent = `Phòng ${num} - ${room.price || 0} VNĐ`;
+          op.setAttribute("data-price", room.price || 0);
           roomSelect.appendChild(op);
         }
       });
     }
   });
-  document.getElementById('roomSelect').addEventListener('change',function(){
-    const p=this.options[this.selectedIndex].getAttribute("data-price");
-    document.getElementById('roomPrice').value=p||"";
+  document.getElementById('roomSelect').addEventListener('change', function () {
+    const p = this.options[this.selectedIndex].getAttribute("data-price");
+    document.getElementById('roomPrice').value = p || "";
   });
 }
 
-// Xem trước ảnh CCCD
-document.getElementById('frontCCCD').addEventListener('change',e=>{
-  const file=e.target.files[0];
-  if(file){
-    const reader=new FileReader();
-    reader.onload=()=>{frontPreview.src=reader.result;frontPreview.style.display='block';};
-    reader.readAsDataURL(file);
-  }
-});
-document.getElementById('backCCCD').addEventListener('change',e=>{
-  const file=e.target.files[0];
-  if(file){
-    const reader=new FileReader();
-    reader.onload=()=>{backPreview.src=reader.result;backPreview.style.display='block';};
-    reader.readAsDataURL(file);
-  }
-});
-
-// Lưu thông tin
-document.getElementById('saveBtn').addEventListener('click',async()=>{
-  const roomId=document.getElementById('roomSelect').value;
-  const customerName=document.getElementById('customerName').value;
-  const idNumber=document.getElementById('idNumber').value;
-  const roomPrice=document.getElementById('roomPrice').value;
-  const initialElectricity=document.getElementById('initialElectricity').value;
-  const initialWater=document.getElementById('initialWater').value;
-  const notes=document.getElementById('notes').value;
-  const sharedCustomers=document.getElementById('sharedCustomers').value.split(',').map(x=>x.trim());
-  if(!roomId||!customerName||!idNumber){alert('Vui lòng điền đầy đủ thông tin!');return;}
-
-  let frontUrl='',backUrl='';
-  const frontFile=document.getElementById('frontCCCD').files[0];
-  const backFile=document.getElementById('backCCCD').files[0];
-
-  try{
-    if(frontFile){
-      const ref=storage.ref(`users/${currentUser.uid}/cccd/${roomId}_front.jpg`);
-      await ref.put(frontFile);
-      frontUrl=await ref.getDownloadURL();
-    }
-    if(backFile){
-      const ref=storage.ref(`users/${currentUser.uid}/cccd/${roomId}_back.jpg`);
-      await ref.put(backFile);
-      backUrl=await ref.getDownloadURL();
-    }
-
-    const data={
-      roomId,customerName,idNumber,
-      roomPrice:parseInt(roomPrice),
-      initialElectricity:parseInt(initialElectricity),
-      initialWater:parseInt(initialWater),
-      sharedCustomers,notes,
-      cccdFront:frontUrl,cccdBack:backUrl,
-      bookingDate:new Date().toISOString(),
-      status:'occupied'
+// Hiển thị ảnh xem trước
+document.getElementById('frontCCCD').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      frontPreview.src = reader.result;
+      frontPreview.style.display = 'block';
     };
-    await database.ref(`users/${currentUser.uid}/rooms/${roomId}`).update({status:'occupied'});
+    reader.readAsDataURL(file);
+  }
+});
+
+document.getElementById('backCCCD').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      backPreview.src = reader.result;
+      backPreview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// Bắt sự kiện lưu
+document.getElementById('saveBtn').addEventListener('click', async () => {
+  const roomId = document.getElementById('roomSelect').value;
+  const customerName = document.getElementById('customerName').value;
+  const idNumber = document.getElementById('idNumber').value;
+  const roomPrice = document.getElementById('roomPrice').value;
+  const initialElectricity = document.getElementById('initialElectricity').value;
+  const initialWater = document.getElementById('initialWater').value;
+  const notes = document.getElementById('notes').value;
+  const sharedCustomers = document.getElementById('sharedCustomers').value.split(',').map(x => x.trim());
+
+  if (!roomId || !customerName || !idNumber) {
+    alert('Vui lòng điền đầy đủ thông tin!');
+    return;
+  }
+
+  const frontFile = document.getElementById('frontCCCD').files[0];
+  const backFile = document.getElementById('backCCCD').files[0];
+
+  let frontUrl = '';
+  let backUrl = '';
+
+  try {
+    // chỉ upload nếu có file
+    if (frontFile) {
+      const ref = storage.ref(`users/${currentUser.uid}/cccd/${roomId}_front_${Date.now()}.jpg`);
+      await ref.put(frontFile);
+      frontUrl = await ref.getDownloadURL();
+    }
+    if (backFile) {
+      const ref = storage.ref(`users/${currentUser.uid}/cccd/${roomId}_back_${Date.now()}.jpg`);
+      await ref.put(backFile);
+      backUrl = await ref.getDownloadURL();
+    }
+
+    const data = {
+      roomId,
+      customerName,
+      idNumber,
+      roomPrice: parseInt(roomPrice) || 0,
+      initialElectricity: parseInt(initialElectricity) || 0,
+      initialWater: parseInt(initialWater) || 0,
+      sharedCustomers,
+      notes,
+      cccdFront: frontUrl,
+      cccdBack: backUrl,
+      bookingDate: new Date().toISOString(),
+      status: 'occupied'
+    };
+
+    await database.ref(`users/${currentUser.uid}/rooms/${roomId}`).update({ status: 'occupied' });
     await database.ref(`users/${currentUser.uid}/bookings`).push(data);
+
     alert('Đặt phòng thành công!');
     window.location.reload();
-  }catch(err){console.error(err);alert('Lỗi khi lưu thông tin.');}
+
+  } catch (err) {
+    console.error('Lỗi lưu:', err);
+    alert('Không thể lưu thông tin. Kiểm tra lại kết nối hoặc quyền Firebase Storage.');
+  }
 });
 
-document.getElementById('logoutBtn').addEventListener('click',()=>auth.signOut().then(()=>window.location='index.html'));
-document.getElementById('copyrightYear').textContent=new Date().getFullYear();
+// Đăng xuất
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  auth.signOut().then(() => window.location = 'index.html');
+});
+
+// Hiển thị năm
+document.getElementById('copyrightYear').textContent = new Date().getFullYear();
 </script>
 </body>
 </html>
