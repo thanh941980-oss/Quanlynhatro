@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Đặt phòng - Quản lý nhà trọ</title>
 <style>
+/* CSS giữ nguyên */
 * {margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;}
 body {background-color:#f5f5f5;color:#333;line-height:1.6;font-size:14px;}
 header {background-color:#2c3e50;color:white;padding:0.7rem 1rem;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 2px 5px rgba(0,0,0,0.1);}
@@ -38,10 +39,10 @@ header {background-color:#2c3e50;color:white;padding:0.7rem 1rem;display:flex;ju
 @media(max-width:768px){.form-row{flex-direction:column;gap:10px;}}
 </style>
 
+<!-- CHỈ import Auth và Database, KHÔNG import Storage -->
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-<!-- ĐÃ XÓA Firebase Storage -->
 </head>
 
 <body>
@@ -144,21 +145,28 @@ function showAlert(message, type) {
   }, 5000);
 }
 
+// Firebase Config KHÔNG CÓ storageBucket
 const firebaseConfig = {
   apiKey: "AIzaSyAz38ll5L6nZOicZyQRFtKd0TuzohrLFws",
   authDomain: "quan-ly-nha-tro-2a4bf.firebaseapp.com",
   databaseURL: "https://quan-ly-nha-tro-2a4bf-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "quan-ly-nha-tro-2a4bf",
-  // ĐÃ XÓA storageBucket vì không dùng Storage
+  // ĐÃ XÓA storageBucket
   messagingSenderId: "490747665921",
   appId: "1:490747665921:web:48b0e2bad3a0f894c22a00"
 };
 
-// Khởi tạo Firebase (chỉ Database và Auth)
-firebase.initializeApp(firebaseConfig);
+// Khởi tạo Firebase (CHỈ Database và Auth)
+try {
+  firebase.initializeApp(firebaseConfig);
+  console.log("Firebase initialized WITHOUT Storage");
+} catch (error) {
+  console.log("Firebase already initialized");
+}
+
 const auth = firebase.auth();
 const database = firebase.database();
-// ĐÃ XÓA storage vì không dùng
+// KHÔNG khởi tạo storage
 
 let currentUser = null;
 
@@ -168,6 +176,7 @@ auth.onAuthStateChanged(user => {
     window.location.href = 'index.html';
   } else {
     currentUser = user;
+    console.log("User logged in:", user.uid);
     loadAvailableRooms();
   }
 });
@@ -192,6 +201,8 @@ function loadAvailableRooms() {
           roomSelect.appendChild(op);
         }
       });
+    } else {
+      console.log("No rooms found for user");
     }
   }).catch(error => {
     console.error("Lỗi khi tải danh sách phòng:", error);
@@ -207,7 +218,7 @@ function loadAvailableRooms() {
 }
 
 // Chuyển ảnh thành Base64 (giới hạn kích thước)
-function imageToBase64(file, maxSizeKB = 500) {
+function imageToBase64(file, maxSizeKB = 300) {
   return new Promise((resolve, reject) => {
     if (!file) {
       resolve('');
@@ -217,6 +228,7 @@ function imageToBase64(file, maxSizeKB = 500) {
     // Kiểm tra kích thước file
     if (file.size > maxSizeKB * 1024) {
       showAlert(`Ảnh ${file.name} quá lớn (>${maxSizeKB}KB). Vui lòng chọn ảnh nhỏ hơn.`, "error");
+      // Reset file input
       resolve('');
       return;
     }
@@ -225,7 +237,10 @@ function imageToBase64(file, maxSizeKB = 500) {
     reader.onload = () => {
       resolve(reader.result);
     };
-    reader.onerror = reject;
+    reader.onerror = (error) => {
+      console.error("Lỗi đọc file:", error);
+      resolve(''); // Vẫn tiếp tục dù không đọc được ảnh
+    };
     reader.readAsDataURL(file);
   });
 }
@@ -240,6 +255,8 @@ document.getElementById('frontCCCD').addEventListener('change', e => {
       frontPreview.style.display = 'block';
     };
     reader.readAsDataURL(file);
+  } else {
+    frontPreview.style.display = 'none';
   }
 });
 
@@ -252,11 +269,15 @@ document.getElementById('backCCCD').addEventListener('change', e => {
       backPreview.style.display = 'block';
     };
     reader.readAsDataURL(file);
+  } else {
+    backPreview.style.display = 'none';
   }
 });
 
 // Bắt sự kiện lưu
 document.getElementById('saveBtn').addEventListener('click', async () => {
+  console.log("Bắt đầu lưu thông tin...");
+  
   const roomId = document.getElementById('roomSelect').value;
   const customerName = document.getElementById('customerName').value;
   const idNumber = document.getElementById('idNumber').value;
@@ -265,6 +286,8 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   const initialWater = document.getElementById('initialWater').value;
   const notes = document.getElementById('notes').value;
   const sharedCustomers = document.getElementById('sharedCustomers').value.split(',').map(x => x.trim()).filter(x => x !== '');
+  
+  console.log("Dữ liệu form:", { roomId, customerName, idNumber });
   
   // Kiểm tra các trường bắt buộc
   if (!roomId || !customerName || !idNumber) {
@@ -288,16 +311,22 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     const frontFile = document.getElementById('frontCCCD').files[0];
     const backFile = document.getElementById('backCCCD').files[0];
     
+    console.log("Files:", { frontFile: !!frontFile, backFile: !!backFile });
+    
     // Chuyển ảnh thành Base64 (nếu có)
     let frontBase64 = '', backBase64 = '';
     
     if (frontFile) {
+      console.log("Converting front image to Base64...");
       frontBase64 = await imageToBase64(frontFile);
     }
     
     if (backFile) {
+      console.log("Converting back image to Base64...");
       backBase64 = await imageToBase64(backFile);
     }
+    
+    console.log("Base64 conversion completed");
     
     // Chuẩn bị dữ liệu
     const data = {
@@ -309,13 +338,20 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       initialWater: parseInt(initialWater) || 0,
       sharedCustomers,
       notes,
-      cccdFront: frontBase64, // Lưu Base64 thay vì URL
-      cccdBack: backBase64,   // Lưu Base64 thay vì URL
+      cccdFront: frontBase64, // Lưu Base64
+      cccdBack: backBase64,   // Lưu Base64
       bookingDate: new Date().toISOString(),
       status: 'occupied'
     };
     
+    console.log("Data to save:", { 
+      ...data, 
+      cccdFront: frontBase64 ? `Base64 (${frontBase64.length} chars)` : 'empty',
+      cccdBack: backBase64 ? `Base64 (${backBase64.length} chars)` : 'empty'
+    });
+    
     // Cập nhật trạng thái phòng
+    console.log("Updating room status...");
     const roomUpdate = {
       status: 'occupied',
       customerName: customerName,
@@ -325,9 +361,12 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     };
     
     await database.ref(`users/${currentUser.uid}/rooms/${roomId}`).update(roomUpdate);
+    console.log("Room status updated");
     
     // Lưu thông tin đặt phòng
+    console.log("Saving booking data...");
     await database.ref(`users/${currentUser.uid}/bookings`).push(data);
+    console.log("Booking data saved");
     
     showAlert('Đặt phòng thành công! Đang chuyển hướng...', 'success');
     
